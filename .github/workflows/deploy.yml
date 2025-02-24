@@ -1,0 +1,63 @@
+name: Common Deploy Workflow
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      project_path:
+        required: true
+        type: string
+      deploy_dev_tag:
+        required: true
+        type: string
+      deploy_prod_tag:
+        required: true
+        type: string
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+      SERVER_USER:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get commit message
+        id: commit
+        run: echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+
+      - name: Set Deployment Server
+        id: set-server
+        run: |
+          if [[ "${{ env.message }}" == *"${{ inputs.deploy_dev_tag }}"* ]]; then
+            echo "server=103.166.183.216" >> $GITHUB_ENV
+          elif [[ "${{ env.message }}" == *"${{ inputs.deploy_prod_tag }}"* ]]; then
+            echo "server=103.166.183.244" >> $GITHUB_ENV
+          else
+            echo "No deployment needed"
+            exit 0
+          fi
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.server }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Server
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ env.server }} << 'EOF'
+            source ~/.secret
+            cd ${{ inputs.project_path }}
+            git pull origin ${{ inputs.branch }}
+            docker-compose down
+            docker-compose up -d
+          EOF
