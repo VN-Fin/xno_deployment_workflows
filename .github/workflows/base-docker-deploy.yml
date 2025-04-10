@@ -18,16 +18,20 @@ jobs:
     environment: ${{ inputs.branch }}
     steps:
       - name: Deploy via SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
         run: |
           echo "Deploying to server with branch: ${{ inputs.branch }}"
-          echo "Deploying to ${{ secrets.SSH_HOST }} as ${{ secrets.SSH_USERNAME }} on branch ${{ inputs.branch }}"
+          echo "Deploying to $SSH_HOST as $SSH_USERNAME on branch ${{ inputs.branch }}"
           
-          echo "${{ secrets.SSH_KEY }}" > private_key.pem
+          echo "$SSH_KEY" > private_key.pem
           chmod 600 private_key.pem
 
           cat private_key.pem
 
-          ssh -i private_key.pem -p 24700 ${{ secrets.SSH_HOST }}@${{ secrets.SSH_USERNAME }} << EOF
+          ssh -i private_key.pem -p 24700 $SSH_HOST@$SSH_USERNAME << EOF
             set -e
             cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
 
