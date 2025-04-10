@@ -19,6 +19,7 @@ jobs:
     steps:
       - name: Deploy via SSH
         run: |
+          echo "Deploying to server with branch: ${{ inputs.branch }}"
           if [[ "${{ inputs.branch }}" == "deploy-dev" ]]; then
             echo "Deploying to ${{ secrets.SSH_DEV_HOST }} as ${{ secrets.SSH_DEV_USERNAME }} on branch ${{ inputs.branch }}"
             
