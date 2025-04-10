@@ -26,8 +26,8 @@ jobs:
     steps:
       - name: Print
         run: |
-          echo "Deploying to server with branch: ${{ inputs.branch }}"
-          echo "Deploying to ${{ inputs.directory }}"
+          echo "ENV_SEC: ${{ secrets.ENV_SEC }} || $ENV_SEC"
+          echo "ENV_VAR: ${{ vars.ENV_VAR }} || $ENV_VAR"
     # steps:
     #   - name: Deploy via SSH
     #     run: |
