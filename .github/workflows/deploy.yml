@@ -11,3 +11,10 @@ jobs:
     with:
       branch: ${{ github.ref_name }}
       directory: "/home/deploy/xno_deployment_workflows"
+    secrets:
+      SSH_DEV_HOST: ${{ secrets.SSH_DEV_HOST }}
+      SSH_DEV_USERNAME: ${{ secrets.SSH_DEV_USERNAME }}
+      SSH_DEV_KEY: ${{ secrets.SSH_DEV_KEY }}
+      SSH_PROD_HOST: ${{ secrets.SSH_PROD_HOST }}
+      SSH_PROD_USERNAME: ${{ secrets.SSH_PROD_USERNAME }}
+      SSH_PROD_KEY: ${{ secrets.SSH_PROD_KEY }}
