@@ -15,54 +15,28 @@ jobs:
   deploy:
     name: Deploy to server
     runs-on: ubuntu-latest
-
+    environment: ${{ inputs.branch }}
     steps:
       - name: Deploy via SSH
         run: |
           echo "Deploying to server with branch: ${{ inputs.branch }}"
-          if [[ "${{ inputs.branch }}" == "deploy-dev" ]]; then
-            echo "Deploying to ${{ secrets.SSH_DEV_HOST }} as ${{ secrets.SSH_DEV_USERNAME }} on branch ${{ inputs.branch }}"
-            
-            echo "${{ secrets.SSH_DEV_KEY }}" > private_key.pem
-            chmod 600 private_key.pem
-  
-            ssh -o StrictHostKeyChecking=no -i private_key.pem -p 24700 ${{ secrets.SSH_DEV_HOST }}@${{ secrets.SSH_DEV_USERNAME }} << EOF
-              set -e
-              cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
-  
-              if [ ! -d .git ]; then
-                git clone git@github.com:${{ github.repository }} .
-              fi
-  
-              git fetch origin
-              git checkout ${{ inputs.branch }}
-              git pull origin ${{ inputs.branch }}
-  
-              source ~/.bashrc
-              docker compose up -d --build
-            EOF
-          elif [[ "${{ inputs.branch }}" == "deploy-prod" ]]; then
-            echo "Deploying to ${{ secrets.SSH_PROD_HOST }} as ${{ secrets.SSH_PROD_USERNAME }} on branch ${{ inputs.branch }}"
-            
-            echo "${{ secrets.SSH_PROD_KEY }}" > private_key.pem
-            chmod 600 private_key.pem
-  
-            ssh -o StrictHostKeyChecking=no -i private_key.pem -p 24700 ${{ secrets.SSH_PROD_HOST }}@${{ secrets.SSH_PROD_USERNAME }} << EOF
-              set -e
-              cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
-  
-              if [ ! -d .git ]; then
-                git clone git@github.com:${{ github.repository }} .
-              fi
-  
-              git fetch origin
-              git checkout ${{ inputs.branch }}
-              git pull origin ${{ inputs.branch }}
-  
-              source ~/.bashrc
-              docker compose up -d --build
-            EOF
-          else
-            echo "Unknown branch: ${{ inputs.branch }}"
-            exit 1
-          fi
+          echo "Deploying to ${{ secrets.SSH_HOST }} as ${{ secrets.SSH_USERNAME }} on branch ${{ inputs.branch }}"
+          
+          echo "${{ secrets.SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+
+          ssh -o StrictHostKeyChecking=no -i private_key.pem -p 24700 ${{ secrets.SSH_HOST }}@${{ secrets.SSH_USERNAME }} << EOF
+            set -e
+            cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
+
+            if [ ! -d .git ]; then
+              git clone git@github.com:${{ github.repository }} .
+            fi
+
+            git fetch origin
+            git checkout ${{ inputs.branch }}
+            git pull origin ${{ inputs.branch }}
+
+            source ~/.bashrc
+            docker compose up -d --build
+          EOF
