@@ -1,0 +1,25 @@
+name: Docker Deploy Base
+
+on:
+  workflow_call:
+    inputs:
+      env:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Load envs from .bashrc
+        run: |
+          set -a
+          source ~/.bashrc
+          set +a
+
+      - name: Docker Compose Up
+        run: |
+          docker compose -f docker-compose.yml up -d --build
