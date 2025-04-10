@@ -3,23 +3,39 @@ name: Docker Deploy Base
 on:
   workflow_call:
     inputs:
-      env:
+      branch:
         required: true
         type: string
+      directory:
+        required: false
+        type: string
+        default: "/home/deploy"
 
 jobs:
   deploy:
+    name: Deploy to server
     runs-on: ubuntu-latest
+    needs: docker
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Load envs from .bashrc
+      - name: Deploy via SSH
         run: |
-          set -a
-          source ~/.bashrc
-          set +a
+          ssh -o StrictHostKeyChecking=no -p 24700 ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} << EOF
+            set -e
+            cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
 
-      - name: Docker Compose Up
-        run: |
-          docker compose -f docker-compose.yml up -d --build
+            # Clone the repo if not exists
+            if [ ! -d .git ]; then
+              git clone git@github.com:${{ github.repository }} .  # Uses SSH to clone
+            fi
+
+            # Move to project directory
+            cd ${{ inputs.directory }}
+
+            git fetch origin
+            git checkout ${{ inputs.branch }}
+            git pull origin ${{ inputs.branch }}
+
+            source ~/.bashrc
+            docker compose up -d --build
+          EOF
