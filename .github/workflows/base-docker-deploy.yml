@@ -1,18 +1,15 @@
 name: Docker Deploy Base
 
 on: 
-  push:
-    branches:
-      - main  
-  # workflow_call:
-  #   inputs:
-  #     branch:
-  #       required: true
-  #       type: string
-  #     directory:
-  #       required: false
-  #       type: string
-  #       default: "/home/deploy"
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      directory:
+        required: false
+        type: string
+        default: "/home/deploy"
 
 jobs:
   deploy:
@@ -20,36 +17,27 @@ jobs:
     runs-on: ubuntu-latest
     environment: 
       name: "dev"
-    env:
-      ENV_SEC: ${{ secrets.ENV_SEC }}
-      ENV_VAR: ${{ vars.ENV_VAR }}
     steps:
-      - name: Print
+      - name: Deploy via SSH
         run: |
-          echo "ENV_SEC: ${{ secrets.ENV_SEC }} || $ENV_SEC"
-          echo "ENV_VAR: ${{ vars.ENV_VAR }} || $ENV_VAR"
-    # steps:
-    #   - name: Deploy via SSH
-    #     run: |
-    #       echo ${{ vars.SSH_KEY }}
-    #       echo "Deploying to server with branch: ${{ inputs.branch }}"
-    #       echo "Deploying to $SSH_HOST as $SSH_USERNAME on branch ${{ inputs.branch }}"
+          echo "Deploying to server with branch: ${{ inputs.branch }}"
+          echo "Deploying to ${{ secrets.SSH_HOST }} as ${{ secrets.SSH_USERNAME }} on branch ${{ inputs.branch }}"
           
-    #       echo "$SSH_KEY" > private_key.pem
-    #       chmod 600 private_key.pem
+          echo "${{ secrets.SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
 
-    #       ssh -i private_key.pem -p 24700 $SSH_HOST@$SSH_USERNAME << EOF
-    #         set -e
-    #         cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
+          ssh -i private_key.pem -p 24700 ${{ secrets.SSH_HOST }}@${{ secrets.SSH_USERNAME }} << EOF
+            set -e
+            cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
 
-    #         if [ ! -d .git ]; then
-    #           git clone git@github.com:${{ github.repository }} .
-    #         fi
+            if [ ! -d .git ]; then
+              git clone git@github.com:${{ github.repository }} .
+            fi
 
-    #         git fetch origin
-    #         git checkout ${{ inputs.branch }}
-    #         git pull origin ${{ inputs.branch }}
+            git fetch origin
+            git checkout ${{ inputs.branch }}
+            git pull origin ${{ inputs.branch }}
 
-    #         source ~/.bashrc
-    #         docker compose up -d --build
-    #       EOF
+            source ~/.bashrc
+            docker compose up -d --build
+          EOF
