@@ -16,12 +16,12 @@ jobs:
     name: Deploy to server
     runs-on: ubuntu-latest
     environment: ${{ inputs.branch }}
+    env:
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
     steps:
       - name: Deploy via SSH
-        env:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
         run: |
           echo "Deploying to server with branch: ${{ inputs.branch }}"
           echo "Deploying to $SSH_HOST as $SSH_USERNAME on branch ${{ inputs.branch }}"
