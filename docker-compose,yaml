@@ -1,0 +1,7 @@
+version: '3.9'
+
+services:
+  fastapi-app:
+    build: .
+    volumes:
+      - .:/app
