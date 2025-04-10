@@ -1,25 +1,24 @@
 name: Docker Deploy Base
 
 on: 
-  push:
-    branches:
-      - main  
-  # workflow_call:
-  #   inputs:
-  #     branch:
-  #       required: true
-  #       type: string
-  #     directory:
-  #       required: false
-  #       type: string
-  #       default: "/home/deploy"
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      directory:
+        required: true
+        type: string
+      env_name:
+        required: true
+        type: string
 
 jobs:
   deploy:
     name: Deploy to server
     runs-on: ubuntu-latest
     environment: 
-      name: "dev"
+      name: ${{ inputs.env_name }}
     env:
       ENV_SEC: ${{ secrets.ENV_SEC }}
       ENV_VAR: ${{ vars.ENV_VAR }}
