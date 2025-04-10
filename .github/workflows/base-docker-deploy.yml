@@ -17,30 +17,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Determine SSH config
-        id: config
+      - name: Deploy via SSH
         run: |
+
           if [[ "${{ inputs.branch }}" == "deploy-dev" ]]; then
-            echo "host=${{ secrets.SSH_DEV_HOST }}" >> $GITHUB_OUTPUT
-            echo "user=${{ secrets.SSH_DEV_USERNAME }}" >> $GITHUB_OUTPUT
-            echo "key=${{ secrets.SSH_DEV_KEY }}" >> $GITHUB_OUTPUT
+            SSH_HOST=${{ secrets.SSH_DEV_HOST }}
+            SSH_USER=${{ secrets.SSH_DEV_USERNAME }}
+            SSH_KEY=${{ secrets.SSH_DEV_KEY }}
           elif [[ "${{ inputs.branch }}" == "deploy-prod" ]]; then
-            echo "host=${{ secrets.SSH_PROD_HOST }}" >> $GITHUB_OUTPUT
-            echo "user=${{ secrets.SSH_PROD_USERNAME }}" >> $GITHUB_OUTPUT
-            echo "key=${{ secrets.SSH_PROD_KEY }}" >> $GITHUB_OUTPUT
+            SSH_HOST=${{ secrets.SSH_PROD_HOST }}
+            SSH_USER=${{ secrets.SSH_PROD_USERNAME }}
+            SSH_KEY=${{ secrets.SSH_PROD_KEY }}
           else
             echo "Unknown branch: ${{ inputs.branch }}"
             exit 1
           fi
 
-      - name: Deploy via SSH
-        run: |
-          echo "Deploying to ${{ steps.config.outputs.host }} as ${{ steps.config.outputs.user }} on branch ${{ inputs.branch }}"
+
+          echo "Deploying to $SSH_HOST as $SSH_USER on branch ${{ inputs.branch }}"
           
-          echo "${{ steps.config.outputs.key }}" > private_key.pem
+          echo "$SSH_KEY" > private_key.pem
           chmod 600 private_key.pem
 
-          ssh -o StrictHostKeyChecking=no -i private_key.pem -p 24700 ${{ steps.config.outputs.user }}@${{ steps.config.outputs.host }} << EOF
+          ssh -o StrictHostKeyChecking=no -i private_key.pem -p 24700 $SSH_HOST@$SSH_USER << EOF
             set -e
             cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
 
