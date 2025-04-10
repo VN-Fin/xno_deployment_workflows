@@ -33,19 +33,15 @@ jobs:
             exit 1
           fi
 
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ steps.config.outputs.key }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 24700 ${{ steps.config.outputs.host }} >> ~/.ssh/known_hosts
-
       - name: Deploy via SSH
         env:
           SSH_HOST: ${{ steps.config.outputs.host }}
           SSH_USER: ${{ steps.config.outputs.user }}
+          SSH_KEY: ${{ steps.config.outputs.key }}
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes -p 24700 ${SSH_USER}@${SSH_HOST} << EOF
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem -p 24700 ${SSH_USER}@${SSH_HOST} << EOF
             set -e
             cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
 
