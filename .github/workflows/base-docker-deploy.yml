@@ -39,6 +39,8 @@ jobs:
           SSH_USER: ${{ steps.config.outputs.user }}
           SSH_KEY: ${{ steps.config.outputs.key }}
         run: |
+          echo "Deploying to $SSH_HOST as $SSH_USER on branch ${{ inputs.branch }}"
+          echo $SSH_KEY
           echo "$SSH_KEY" > private_key.pem
           chmod 600 private_key.pem
           ssh -o StrictHostKeyChecking=no -i private_key.pem -p 24700 ${SSH_USER}@${SSH_HOST} << EOF
