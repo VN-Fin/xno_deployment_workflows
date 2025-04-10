@@ -7,21 +7,23 @@ on:
         required: true
         type: string
       directory:
-        required: false
+        required: true
         type: string
-        default: "/home/deploy"
+      environment:
+        required: true
+        type: string
 
 jobs:
   deploy:
     name: Deploy to server
     runs-on: ubuntu-latest
     environment: 
-      name: "dev"
+      name: ${{ inputs.environment }}
     steps:
       - name: Deploy via SSH
         run: |
-          echo "Deploying to server with branch: ${{ inputs.branch }}"
-          echo "Deploying to ${{ secrets.SSH_HOST }} as ${{ secrets.SSH_USERNAME }} on branch ${{ inputs.branch }}"
+          echo "[${{ inputs.environment }}] Deploying to server with branch: ${{ inputs.branch }}"
+          echo "[${{ inputs.environment }}] Deploying to ${{ secrets.SSH_HOST }} as ${{ secrets.SSH_USERNAME }} on branch ${{ inputs.branch }}"
           
           echo "${{ secrets.SSH_KEY }}" > private_key.pem
           chmod 600 private_key.pem
