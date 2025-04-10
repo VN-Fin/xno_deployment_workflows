@@ -17,26 +17,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Determine SSH configuration
+      - name: Determine SSH config
         id: config
         run: |
           if [[ "${{ inputs.branch }}" == "deploy-dev" ]]; then
             echo "host=${{ secrets.SSH_DEV_HOST }}" >> $GITHUB_OUTPUT
             echo "user=${{ secrets.SSH_DEV_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "key=${{ secrets.SSH_DEV_KEY }}" >> $GITHUB_OUTPUT
           elif [[ "${{ inputs.branch }}" == "deploy-prod" ]]; then
             echo "host=${{ secrets.SSH_PROD_HOST }}" >> $GITHUB_OUTPUT
             echo "user=${{ secrets.SSH_PROD_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "key=${{ secrets.SSH_PROD_KEY }}" >> $GITHUB_OUTPUT
           else
             echo "Unknown branch: ${{ inputs.branch }}"
             exit 1
           fi
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ steps.config.outputs.key }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p 24700 ${{ steps.config.outputs.host }} >> ~/.ssh/known_hosts
 
       - name: Deploy via SSH
         env:
           SSH_HOST: ${{ steps.config.outputs.host }}
           SSH_USER: ${{ steps.config.outputs.user }}
         run: |
-          ssh -o StrictHostKeyChecking=no -p 24700 ${SSH_USER}@${SSH_HOST} << EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes -p 24700 ${SSH_USER}@${SSH_HOST} << EOF
             set -e
             cd ${{ inputs.directory }} || mkdir -p ${{ inputs.directory }} && cd ${{ inputs.directory }}
 
