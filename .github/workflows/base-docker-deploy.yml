@@ -13,12 +13,7 @@ on:
         required: true
         type: string
     secrets:
-      SSH_HOST:
-        required: true
-      SSH_USERNAME:
-        required: true
-      SSH_KEY:
-        required: true
+      inherit: true
 
 jobs:
   deploy:
