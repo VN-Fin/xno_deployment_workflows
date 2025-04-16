@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to DEV
-        if: github.ref_name == 'deploy-dev' && contains(github.event.head_commit.message, 'DEPLOY')
+        if: github.ref_name == 'dev' && contains(github.event.head_commit.message, 'DEPLOY')
         run: |
           echo "[dev] Deploying to server with branch: ${{ github.ref_name }}"
           echo "${{ secrets.SSH_DEV_KEY }}" > private_key.pem
@@ -47,7 +47,7 @@ jobs:
           EOF
 
       - name: Deploy to PROD
-        if: github.ref_name == 'deploy-prod' && contains(github.event.head_commit.message, 'DEPLOY')
+        if: github.ref_name == 'prod' && contains(github.event.head_commit.message, 'DEPLOY')
         run: |
           echo "[prod] Deploying to server with branch: ${{ github.ref_name }}"
           echo "${{ secrets.SSH_PROD_KEY }}" > private_key.pem
