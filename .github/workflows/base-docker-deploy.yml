@@ -39,11 +39,25 @@ jobs:
             fi
 
             cd "/home/deploy/$PROJECT_NAME"
+
+            # Save the current commit as the last working version
+            LAST_COMMIT=$(git rev-parse HEAD)
+            echo "$LAST_COMMIT" > .last_working_commit
+
             git fetch origin
             git checkout ${{ github.ref_name }}
             git pull origin ${{ github.ref_name }}
 
-            docker compose up -d --build
+            echo "Building docker..."
+            if ! docker compose up -d --build; then
+              echo "Build failed! Rolling back to last working commit: $(cat .last_working_commit)"
+              git checkout $(cat .last_working_commit)
+              git reset --hard
+              docker compose up -d --build || echo "Rollback failed too!"
+              exit 1
+            fi
+
+            echo "Deployment succeeded!"
           EOF
 
       - name: Deploy to PROD
