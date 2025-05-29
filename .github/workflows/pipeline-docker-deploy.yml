@@ -1,0 +1,72 @@
+name: Deploy Project
+
+on:
+  workflow_call:
+    secrets:
+      SSH_DEV_KEY:
+        required: true
+      SSH_DEV_HOST:
+        required: true
+      SSH_DEV_USERNAME:
+        required: true
+      SSH_PROD_KEY:
+        required: true
+      SSH_PROD_HOST:
+        required: true
+      SSH_PROD_USERNAME:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to DEV
+        if: github.ref_name == 'dev' && contains(github.event.head_commit.message, 'DEPLOY')
+        run: |
+          echo "[dev] Deploying to server with branch: ${{ github.ref_name }}"
+          echo "${{ secrets.SSH_DEV_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          mkdir -p ~/.ssh
+          ssh-keyscan -p 24700 ${{ secrets.SSH_DEV_HOST }} >> ~/.ssh/known_hosts
+
+          ssh -p 24700 -i private_key.pem ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_HOST }} bash << 'EOF'
+            cd /home/deploy
+            export PROJECT_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
+
+            if [ ! -d "$PROJECT_NAME" ]; then
+              git clone https://github.com/${{ github.repository }}.git "$PROJECT_NAME"
+            fi
+
+            cd "/home/deploy/$PROJECT_NAME"
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+            docker compose up -d --build
+          EOF
+
+      - name: Deploy to PROD
+        if: github.ref_name == 'prod' && contains(github.event.head_commit.message, 'DEPLOY')
+        run: |
+          echo "[prod] Deploying to server with branch: ${{ github.ref_name }}"
+          echo "${{ secrets.SSH_PROD_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          mkdir -p ~/.ssh
+          ssh-keyscan -p 24700 ${{ secrets.SSH_PROD_HOST }} >> ~/.ssh/known_hosts
+
+          ssh -p 24700 -i private_key.pem ${{ secrets.SSH_PROD_USERNAME }}@${{ secrets.SSH_PROD_HOST }} bash << 'EOF'
+            cd /home/deploy
+            export PROJECT_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
+
+            if [ ! -d "$PROJECT_NAME" ]; then
+              git clone https://github.com/${{ github.repository }}.git "$PROJECT_NAME"
+            fi
+
+            cd "/home/deploy/$PROJECT_NAME"
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+            docker compose up -d --build
+          EOF
