@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    runs-on: dev-env
+    runs-on: [self-hosted, dev_env]
     outputs:
       image_name: ${{ steps.set-image-name.outputs.image_name }}
     steps:
@@ -35,7 +35,7 @@ jobs:
 
   deploy_local:
     needs: build
-    runs-on: dev-env
+    runs-on: [self-hosted, dev_env]
     steps:
       - name: Deploy stack with dynamic image tag
         run: |
@@ -52,7 +52,7 @@ jobs:
 
   cleanup:
     needs: deploy_local
-    runs-on: dev-env
+    runs-on: [self-hosted, dev_env]
     steps:
       - name: Cleanup dangling images
         run: docker image prune -f
