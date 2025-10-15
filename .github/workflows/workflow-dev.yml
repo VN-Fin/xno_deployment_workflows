@@ -16,7 +16,7 @@ jobs:
   hello:
     name: Debug Print
     runs-on:
-      group: dev
+      group: Default
       labels: [pop-os]
     steps:
       - name: Hello World Action
