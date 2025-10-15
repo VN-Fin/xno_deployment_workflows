@@ -15,7 +15,7 @@ on:
 jobs:
   hello:
     name: Debug Print
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, pop-os]
     steps:
       - name: Hello World Action
         run: echo "Hello ${{ inputs.service_name }}!"
