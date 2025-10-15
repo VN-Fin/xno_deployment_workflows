@@ -19,47 +19,47 @@ jobs:
       - name: Hello World Action
         run: echo "Hello ${{ inputs.service_name }}!"
 
-  build:
-    needs: hello
-    runs-on: [self-hosted, Linux, pop-os]
-    outputs:
-      image_name: ${{ steps.set-image-name.outputs.image_name }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set image name
-        id: set-image-name
-        run: |
-          SERVICE_NAME=${{ inputs.service_name || github.event.repository.name }}
-          IMAGE_TAG=${GITHUB_SHA::8}
-          IMAGE_NAME="$SERVICE_NAME:$IMAGE_TAG"
-          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-
-      - name: Build image with unique tag
-        run: |
-          docker build -t "${{ steps.set-image-name.outputs.image_name }}" .
-
-  deploy_local:
-    needs: build
-    runs-on: [self-hosted, Linux, pop-os]
-    steps:
-      - name: Deploy stack with dynamic image tag
-        run: |
-          SERVICE_NAME=${{ inputs.service_name || github.event.repository.name }}
-          IMAGE_NAME=${{ needs.build.outputs.image_name }}
-          echo "Deploying $IMAGE_NAME"
-
-          # Create temp compose file with IMAGE_NAME replaced
-          env IMAGE_NAME=$IMAGE_NAME envsubst < docker-compose.yaml > docker-compose.rendered.yaml
-
-          docker stack deploy \
-            -c docker-compose.rendered.yaml \
-            $SERVICE_NAME --with-registry-auth --resolve-image never
-
-  cleanup:
-    needs: deploy_local
-    runs-on: [self-hosted, Linux, pop-os]
-    steps:
-      - name: Cleanup dangling images
-        run: docker image prune -f
+#  build:
+#    needs: hello
+#    runs-on: [self-hosted, Linux, pop-os]
+#    outputs:
+#      image_name: ${{ steps.set-image-name.outputs.image_name }}
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#
+#      - name: Set image name
+#        id: set-image-name
+#        run: |
+#          SERVICE_NAME=${{ inputs.service_name || github.event.repository.name }}
+#          IMAGE_TAG=${GITHUB_SHA::8}
+#          IMAGE_NAME="$SERVICE_NAME:$IMAGE_TAG"
+#          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+#
+#      - name: Build image with unique tag
+#        run: |
+#          docker build -t "${{ steps.set-image-name.outputs.image_name }}" .
+#
+#  deploy_local:
+#    needs: build
+#    runs-on: [self-hosted, Linux, pop-os]
+#    steps:
+#      - name: Deploy stack with dynamic image tag
+#        run: |
+#          SERVICE_NAME=${{ inputs.service_name || github.event.repository.name }}
+#          IMAGE_NAME=${{ needs.build.outputs.image_name }}
+#          echo "Deploying $IMAGE_NAME"
+#
+#          # Create temp compose file with IMAGE_NAME replaced
+#          env IMAGE_NAME=$IMAGE_NAME envsubst < docker-compose.yaml > docker-compose.rendered.yaml
+#
+#          docker stack deploy \
+#            -c docker-compose.rendered.yaml \
+#            $SERVICE_NAME --with-registry-auth --resolve-image never
+#
+#  cleanup:
+#    needs: deploy_local
+#    runs-on: [self-hosted, Linux, pop-os]
+#    steps:
+#      - name: Cleanup dangling images
+#        run: docker image prune -f
