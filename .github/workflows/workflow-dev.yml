@@ -13,8 +13,15 @@ on:
         default: ${{ github.event.repository.name }}
 
 jobs:
+  hello:
+    runs-on: [self-hosted, Linux, pop-os]
+    steps:
+      - name: Hello World Action
+        run: echo "Hello, world!"
+
   build:
-    runs-on: [self-hosted, Linux, dev-env]
+    needs: hello
+    runs-on: [self-hosted, Linux, pop-os]
     outputs:
       image_name: ${{ steps.set-image-name.outputs.image_name }}
     steps:
@@ -35,7 +42,7 @@ jobs:
 
   deploy_local:
     needs: build
-    runs-on: [self-hosted, Linux, dev-env]
+    runs-on: [self-hosted, Linux, pop-os]
     steps:
       - name: Deploy stack with dynamic image tag
         run: |
@@ -52,7 +59,7 @@ jobs:
 
   cleanup:
     needs: deploy_local
-    runs-on: [self-hosted, Linux, dev-env]
+    runs-on: [self-hosted, Linux, pop-os]]
     steps:
       - name: Cleanup dangling images
         run: docker image prune -f
