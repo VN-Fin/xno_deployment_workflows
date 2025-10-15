@@ -15,9 +15,7 @@ on:
 jobs:
   hello:
     name: Debug Print
-    runs-on:
-      group: Default
-      labels: [pop-os]
+    runs-on: self-hosted
     steps:
       - name: Hello World Action
         run: echo "Hello ${{ inputs.service_name }}!"
