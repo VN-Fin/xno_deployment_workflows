@@ -59,7 +59,7 @@ jobs:
 
   cleanup:
     needs: deploy_local
-    runs-on: [self-hosted, Linux, pop-os]]
+    runs-on: [self-hosted, Linux, pop-os]
     steps:
       - name: Cleanup dangling images
         run: docker image prune -f
