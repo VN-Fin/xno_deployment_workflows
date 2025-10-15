@@ -4,16 +4,17 @@ on:
   push:
     branches:
       - main
-  workflow_call:
-    inputs:
-      service_name:
-        description: "Name of the service"
-        required: true
-        type: string
-        default: ${{ github.event.repository.name }}
+#  workflow_call:
+#    inputs:
+#      service_name:
+#        description: "Name of the service"
+#        required: true
+#        type: string
+#        default: ${{ github.event.repository.name }}
 
 jobs:
   hello:
+    name: Debug Print
     runs-on: ubuntu-20.04
     steps:
       - name: Hello World Action
