@@ -14,7 +14,7 @@ on:
 
 jobs:
   hello:
-    runs-on: [self-hosted, Linux, pop-os]
+    runs-on: ubuntu-20.04
     steps:
       - name: Hello World Action
         run: echo "Hello ${{ inputs.service_name }}!"
