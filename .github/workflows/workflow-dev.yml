@@ -15,7 +15,7 @@ on:
 jobs:
   hello:
     name: Debug Print
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Hello World Action
         run: echo "Hello ${{ inputs.service_name }}!"
