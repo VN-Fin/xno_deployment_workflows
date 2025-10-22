@@ -1,0 +1,10 @@
+name: Deploy Single Service
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    uses: ./.github/workflows/workflow-swarm-dev.yml

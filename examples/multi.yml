@@ -1,0 +1,18 @@
+name: Deploy All Services
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  matrix-build-deploy:
+    strategy:
+      matrix:
+        service: [traefik, user-service, payment-service]
+    uses: ./.github/workflows/workflow-dev.yml
+    with:
+      environment: dev
+      service_name: ${{ matrix.service }}
+      context: ${{ matrix.service }}
+      dockerfile: ${{ matrix.service }}/Dockerfile
