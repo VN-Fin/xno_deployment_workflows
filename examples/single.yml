@@ -7,4 +7,7 @@ on:
 
 jobs:
   build-deploy:
-    uses: ./.github/workflows/workflow-swarm-dev.yml
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/workflow-swarm.yml
+  with:
+    environment: dev
+    services: "root"
