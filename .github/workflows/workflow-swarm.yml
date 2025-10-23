@@ -78,6 +78,8 @@ jobs:
     needs: build
     runs-on: self-hosted
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Deploy stack with resolved image tags
         run: |
           echo "${{ needs.build.outputs.image_names }}" > images.txt
