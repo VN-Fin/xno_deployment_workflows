@@ -7,6 +7,10 @@ on:
         description: "Deployment environment (e.g., dev, staging, prod)"
         required: true
         type: string
+      stack:
+        description: "Docker Swarm stack name"
+        required: true
+        type: string
       services:
         description: "Comma-separated list of service directories or 'root' for single service"
         required: true
@@ -95,6 +99,6 @@ jobs:
       
           docker stack deploy \
             -c docker-compose.resolved.yaml \
-            ${{ inputs.environment }} \
+            ${{ inputs.stack }} \
             --with-registry-auth \
             --resolve-image never
