@@ -84,15 +84,35 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Load environment from .env (optional, if you use one)
+        run: |
+          if [ -f .env ]; then
+            export $(grep -v '^#' .env | xargs)
+          fi
+
       - name: Deploy stack with resolved image tags
         run: |
-          # Extract and export variables
+          # Extract and export variables from build output
           while IFS='=' read -r key value; do
             export "$key"="$value"
           done < <(echo "${{ needs.build.outputs.image_names }}")
-            
+  
+          echo "Resolved images:"
+          env | grep ghcr
+  
+          # 🔹 Pull images explicitly
+          for IMAGE in $(env | grep ghcr | cut -d'=' -f2); do
+            echo "Pulling image: $IMAGE"
+            docker pull "$IMAGE" || exit 1
+          done
+  
+          # 🔹 Replace variables in docker-compose template
+          envsubst < docker-compose.yaml > docker-compose.resolved.yaml
+  
+          # 🔹 Deploy to swarm
           docker stack deploy \
-            -c docker-compose.yaml \
+            -c docker-compose.resolved.yaml \
             ${{ inputs.stack }} \
             --with-registry-auth \
             --resolve-image never
