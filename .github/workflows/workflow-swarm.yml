@@ -116,3 +116,11 @@ jobs:
             ${{ inputs.stack }} \
             --with-registry-auth \
             --resolve-image never
+
+  remove_images:
+    needs: deploy_local
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove built images
+        run: |
+          docker rmi $(docker images)
