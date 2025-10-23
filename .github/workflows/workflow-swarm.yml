@@ -90,15 +90,9 @@ jobs:
           while IFS='=' read -r key value; do
             export "$key"="$value"
           done < <(echo "${{ needs.build.outputs.image_names }}")
-      
-          echo "Resolved images:"
-          env | grep ghcr
-      
-          # Replace in compose
-          envsubst < docker-compose.yaml > docker-compose.resolved.yaml
-      
+            
           docker stack deploy \
-            -c docker-compose.resolved.yaml \
+            -c docker-compose.yaml \
             ${{ inputs.stack }} \
             --with-registry-auth \
             --resolve-image never
