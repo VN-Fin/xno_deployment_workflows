@@ -7,12 +7,10 @@ on:
         description: "Deployment environment (e.g., dev, staging, prod)"
         required: true
         type: string
-
       services:
         description: "Comma-separated list of service directories or 'root' for single service"
         required: true
         type: string
-
       dockerfiles:
         description: "Optional comma-separated list of Dockerfile paths (must align with services)"
         required: false
