@@ -82,12 +82,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Deploy stack with resolved image tags
         run: |
-          echo "${{ needs.build.outputs.image_names }}" > images.txt
-          cat images.txt
-
+          # Extract and export variables
+          while IFS='=' read -r key value; do
+            export "$key"="$value"
+          done < <(echo "${{ needs.build.outputs.image_names }}")
+      
+          echo "Resolved images:"
+          env | grep ghcr
+      
           # Replace in compose
           envsubst < docker-compose.yaml > docker-compose.resolved.yaml
-
+      
           docker stack deploy \
             -c docker-compose.resolved.yaml \
             ${{ inputs.environment }} \
