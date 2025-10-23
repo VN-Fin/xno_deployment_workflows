@@ -27,6 +27,13 @@ jobs:
     outputs:
       image_names: ${{ steps.set_output.outputs.image_names }}
     steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
