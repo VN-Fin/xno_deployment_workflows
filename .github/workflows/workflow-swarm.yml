@@ -126,7 +126,10 @@ jobs:
     needs: deploy_local
     runs-on: ubuntu-latest
     steps:
-      - name: Remove built images
+      - name: Remove exited or dead containers
         run: |
-          docker rm $(docker ps -aq)
+          docker ps -a -f "status=exited" -f "status=dead" -q | xargs -r docker rm
+
+      - name: Remove unused images
+        run: |
           docker rmi $(docker images -q)
