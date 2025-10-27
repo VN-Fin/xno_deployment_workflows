@@ -128,4 +128,5 @@ jobs:
     steps:
       - name: Remove built images
         run: |
-          docker rmi $(docker images)
+          docker rm $(docker ps -aq)
+          docker rmi $(docker images -q)
