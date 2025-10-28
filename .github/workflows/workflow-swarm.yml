@@ -132,4 +132,4 @@ jobs:
 
       - name: Remove unused images
         run: |
-          docker rmi $(docker images -q)
+          docker rmi $(docker images -aq)
