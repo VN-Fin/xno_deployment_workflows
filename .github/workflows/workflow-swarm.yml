@@ -80,7 +80,9 @@ jobs:
 
   deploy_local:
     needs: build
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - ${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
