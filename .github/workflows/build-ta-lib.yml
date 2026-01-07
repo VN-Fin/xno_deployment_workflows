@@ -26,15 +26,15 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib:${{ matrix.ta-lib-version }}
+          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib-${{ matrix.ta-lib-version }}
           echo "Building $IMAGE"
           docker build \
             --build-arg PYTHON_VERSION=${{ matrix.python-version }} \
             --build-arg TA_LIB_VERSION=${{ matrix.ta-lib-version }} \
             -t $IMAGE \
-            -f Dockerfile.ta-lib .
+            -f dockers/Dockerfile.ta-lib .
 
       - name: Push Docker image
         run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib:${{ matrix.ta-lib-version }}
+          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib-${{ matrix.ta-lib-version }}
           docker push $IMAGE
