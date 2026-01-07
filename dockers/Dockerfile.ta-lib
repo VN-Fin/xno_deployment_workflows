@@ -1,5 +1,4 @@
 ARG PYTHON_VERSION
-ARG TA_LIB_VERSION
 
 FROM python:${PYTHON_VERSION}-slim AS base
 
@@ -9,6 +8,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Build TA-Lib
+ARG TA_LIB_VERSION
 RUN wget -q https://github.com/ta-lib/ta-lib/releases/download/v${TA_LIB_VERSION}/ta-lib-${TA_LIB_VERSION}-src.tar.gz && \
     tar -xzf ta-lib-${TA_LIB_VERSION}-src.tar.gz && \
     cd ta-lib-${TA_LIB_VERSION} && \
