@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15]
+        ta-lib-version: [0.6.4]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -20,25 +24,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Build and push Docker images sequentially
+      - name: Build Docker image
         run: |
-          PYTHON_VERSIONS=("3.9" "3.10" "3.11" "3.12" "3.13" "3.14")
-          TA_LIB_VERSIONS=("0.6.4")
+          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib-${{ matrix.ta-lib-version }}
+          echo "Building $IMAGE"
+          docker build \
+            --build-arg PYTHON_VERSION=${{ matrix.python-version }} \
+            --build-arg TA_LIB_VERSION=${{ matrix.ta-lib-version }} \
+            -t $IMAGE \
+            -f dockers/Dockerfile.ta-lib .
 
-          for py in "${PYTHON_VERSIONS[@]}"; do
-            for talib in "${TA_LIB_VERSIONS[@]}"; do
-              IMAGE=ghcr.io/${{ github.repository_owner }}/python-${py}-talib-${talib}
-              echo "Building $IMAGE"
-              
-              # Build image with no cache, fail fast
-              docker build \
-                --no-cache \
-                --build-arg PYTHON_VERSION=$py \
-                --build-arg TA_LIB_VERSION=$talib \
-                -t $IMAGE \
-                -f dockers/Dockerfile.ta-lib || exit 1
-
-              echo "Pushing $IMAGE"
-              docker push $IMAGE || exit 1
-            done
-          done
+      - name: Push Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib:${{ matrix.ta-lib-version }}
+          docker push $IMAGE
