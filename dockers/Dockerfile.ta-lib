@@ -1,0 +1,22 @@
+# ARG allows us to change python version at build time
+ARG PYTHON_VERSION=3.10
+FROM python:${PYTHON_VERSION}-slim AS base
+
+# Install build tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential wget ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Build TA-Lib
+ARG TA_LIB_VERSION=0.6.4
+RUN wget -q https://github.com/ta-lib/ta-lib/releases/download/v${TA_LIB_VERSION}/ta-lib-${TA_LIB_VERSION}-src.tar.gz && \
+    tar -xzf ta-lib-${TA_LIB_VERSION}-src.tar.gz && \
+    cd ta-lib-${TA_LIB_VERSION} && \
+    ./configure --prefix=/usr/local && \
+    make -j"$(nproc)" && \
+    make install && \
+    cd .. && \
+    rm -rf ta-lib-${TA_LIB_VERSION} ta-lib-${TA_LIB_VERSION}-src.tar.gz
+
+# Verify
+RUN python -c "import ctypes; print('TA-Lib library installed')"

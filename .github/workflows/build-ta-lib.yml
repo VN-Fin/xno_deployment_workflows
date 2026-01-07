@@ -1,0 +1,40 @@
+name: Build Python+TA-Lib Images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15]
+        ta-lib-version: [0.4.0, 0.6.4]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib:${{ matrix.ta-lib-version }}
+          echo "Building $IMAGE"
+          docker build \
+            --build-arg PYTHON_VERSION=${{ matrix.python-version }} \
+            --build-arg TA_LIB_VERSION=${{ matrix.ta-lib-version }} \
+            -t $IMAGE \
+            -f Dockerfile.ta-lib .
+
+      - name: Push Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib:${{ matrix.ta-lib-version }}
+          docker push $IMAGE
