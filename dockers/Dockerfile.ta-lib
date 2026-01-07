@@ -4,7 +4,7 @@ FROM python:${PYTHON_VERSION}-slim AS base
 
 # Install build tools
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential wget ca-certificates && \
+    apt-get install -y --no-install-recommends git build-essential wget ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Build TA-Lib
