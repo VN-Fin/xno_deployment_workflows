@@ -37,5 +37,5 @@ jobs:
 
       - name: Push Docker image
         run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib:${{ matrix.ta-lib-version }}
+          IMAGE=ghcr.io/${{ github.repository_owner }}/python-${{ matrix.python-version }}-talib-${{ matrix.ta-lib-version }}
           docker push $IMAGE
