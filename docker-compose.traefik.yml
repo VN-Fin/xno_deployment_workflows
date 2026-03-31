@@ -14,9 +14,11 @@ services:
       - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
       - "--providers.swarm.exposedByDefault=false"
       - "--providers.swarm.network=traefik-${RUN_ENV}"
+      # Only discover services tagged for this environment — prevents cross-env routing
+      - --providers.swarm.constraints=Label(`traefik.env`,`${RUN_ENV}`)
       # Entrypoint exposed to nginx
       - "--entrypoints.web.address=:80"
-      # Dashboard (disable in prod or add auth middleware)
+      # Dashboard — accessible at http://manager:${TRAEFIK_PORT}/dashboard/ (no separate port needed)
       - "--api.dashboard=true"
       - "--api.insecure=true"
       # Logging
@@ -24,7 +26,6 @@ services:
       - "--accesslog=true"
     ports:
       - "${TRAEFIK_PORT:-80}:80"
-      - "${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
