@@ -57,8 +57,10 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.env=${RUN_ENV}"
-        # gRPC router — uses h2c (HTTP/2 cleartext) to backend
-        - "traefik.http.routers.hello_grpc_${RUN_ENV}.rule=PathPrefix(`/hello.HelloService`)"
+        # gRPC router — catch-all on grpc entrypoint (includes reflection path)
+        # For multiple gRPC services, use PathPrefix(`/package.Service`) per service
+        # and add a separate router for `/grpc.reflection` pointing to one of them.
+        - "traefik.http.routers.hello_grpc_${RUN_ENV}.rule=PathPrefix(`/`)"
         - "traefik.http.routers.hello_grpc_${RUN_ENV}.entrypoints=grpc"
         - "traefik.http.services.hello_grpc_${RUN_ENV}.loadbalancer.server.port=50051"
         - "traefik.http.services.hello_grpc_${RUN_ENV}.loadbalancer.server.scheme=h2c"
