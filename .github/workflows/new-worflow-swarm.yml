@@ -124,9 +124,10 @@ jobs:
           # Replace variables in docker-compose template
           envsubst < docker-compose.yaml > docker-compose.resolved.yaml
 
-          # Deploy to swarm
+          # Deploy to swarm — stack name includes environment to prevent cross-env conflicts
+          # e.g. stack=hello + environment=dev → hello-dev
           docker stack deploy \
             -c docker-compose.resolved.yaml \
-            ${{ inputs.stack }} \
+            ${{ inputs.stack }}-${{ inputs.environment }} \
             --with-registry-auth \
             --resolve-image never
