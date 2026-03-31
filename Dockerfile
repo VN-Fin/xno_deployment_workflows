@@ -11,8 +11,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the app code
 COPY . .
 
-# Expose port
-EXPOSE 8000
+# Generate gRPC stubs from proto
+RUN python -m grpc_tools.protoc \
+    -I protos \
+    --python_out=. \
+    --grpc_python_out=. \
+    protos/hello.proto
 
-# Run the app
+# Expose ports: 8000 (HTTP), 50051 (gRPC)
+EXPOSE 8000 50051
+
+# Default: run the HTTP API (override via entrypoint in docker-compose)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -140,14 +140,17 @@ docker network ls --filter driver=overlay
 Each environment gets its own Traefik v3 stack so services are fully isolated.
 
 ```bash
-# Dev — dashboard at http://manager:8081/dashboard/
-RUN_ENV=dev TRAEFIK_PORT=8081 docker stack deploy -c docker-compose.traefik.yml traefik-dev
+# Dev — HTTP :8081, gRPC :50051
+RUN_ENV=dev TRAEFIK_PORT=8081 TRAEFIK_GRPC_PORT=50051 \
+  docker stack deploy -c docker-compose.traefik.yml traefik-dev
 
-# Staging — dashboard at http://manager:8082/dashboard/
-RUN_ENV=staging TRAEFIK_PORT=8082 docker stack deploy -c docker-compose.traefik.yml traefik-staging
+# Staging — HTTP :8082, gRPC :50052
+RUN_ENV=staging TRAEFIK_PORT=8082 TRAEFIK_GRPC_PORT=50052 \
+  docker stack deploy -c docker-compose.traefik.yml traefik-staging
 
-# Prod — dashboard at http://manager:8083/dashboard/ (disable api.insecure in prod)
-RUN_ENV=prod TRAEFIK_PORT=8083 docker stack deploy -c docker-compose.traefik.yml traefik-prod
+# Prod — HTTP :8083, gRPC :50053 (disable api.insecure in prod)
+RUN_ENV=prod TRAEFIK_PORT=8083 TRAEFIK_GRPC_PORT=50053 \
+  docker stack deploy -c docker-compose.traefik.yml traefik-prod
 ```
 
 Verify:
@@ -361,14 +364,31 @@ jobs:
 In swarm mode, Traefik reads labels from the **swarm service**, not the container.
 Labels must be under `deploy.labels`:
 
+**HTTP service:**
+
 ```yaml
 deploy:
   labels:
     - "traefik.enable=true"
-    # ${RUN_ENV} makes the router name unique per environment — no collisions
+    - "traefik.env=${RUN_ENV}"
     - "traefik.http.routers.myapp_${RUN_ENV}.rule=PathPrefix(`/myapp`)"
     - "traefik.http.routers.myapp_${RUN_ENV}.entrypoints=web"
     - "traefik.http.services.myapp_${RUN_ENV}.loadbalancer.server.port=3000"
+```
+
+**gRPC service:**
+
+```yaml
+deploy:
+  labels:
+    - "traefik.enable=true"
+    - "traefik.env=${RUN_ENV}"
+    # Route by gRPC service path (package.ServiceName)
+    - "traefik.http.routers.myapp_grpc_${RUN_ENV}.rule=PathPrefix(`/mypackage.MyService`)"
+    - "traefik.http.routers.myapp_grpc_${RUN_ENV}.entrypoints=grpc"
+    # h2c = HTTP/2 cleartext (gRPC without TLS between Traefik and backend)
+    - "traefik.http.services.myapp_grpc_${RUN_ENV}.loadbalancer.server.port=50051"
+    - "traefik.http.services.myapp_grpc_${RUN_ENV}.loadbalancer.server.scheme=h2c"
 ```
 
 The service must also connect to the `traefik-${RUN_ENV}` network so the correct Traefik instance can discover it:
@@ -414,6 +434,91 @@ The script will:
 - Create all overlay networks
 - Deploy Traefik for dev, staging, and prod
 - Print the nginx config snippet
+
+---
+
+## Testing gRPC Services
+
+### Install grpcurl
+
+```bash
+# Ubuntu/Debian
+curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v1.9.2/grpcurl_1.9.2_linux_x86_64.tar.gz" \
+  | sudo tar -xz -C /usr/local/bin grpcurl
+
+# macOS
+brew install grpcurl
+```
+
+### List available gRPC services (uses server reflection)
+
+```bash
+# Dev (gRPC port 50051)
+grpcurl -plaintext manager01-dev.xno:50051 list
+
+# Staging (gRPC port 50052)
+grpcurl -plaintext manager01-dev.xno:50052 list
+```
+
+Expected output:
+
+```
+grpc.reflection.v1alpha.ServerReflection
+hello.HelloService
+```
+
+### Describe a service
+
+```bash
+grpcurl -plaintext manager01-dev.xno:50051 describe hello.HelloService
+```
+
+### Call SayHello RPC
+
+```bash
+# Dev
+grpcurl -plaintext -d '{"name": "world"}' \
+  manager01-dev.xno:50051 hello.HelloService/SayHello
+
+# Staging
+grpcurl -plaintext -d '{"name": "world"}' \
+  manager01-dev.xno:50052 hello.HelloService/SayHello
+```
+
+Expected output:
+
+```json
+{
+  "message": "hello dev from gRPC, world!"
+}
+```
+
+### Test from another service inside the swarm (service-to-service via app-net)
+
+```bash
+# From any container on app-net, use the swarm DNS name:
+# <stack>_<service>:<port>
+grpcurl -plaintext hello-dev_grpc:50051 hello.HelloService/SayHello -d '{"name": "internal"}'
+```
+
+### Test HTTP API alongside gRPC
+
+```bash
+# HTTP API (port 8081 for dev)
+curl http://manager01-dev.xno:8081/hello-api
+
+# gRPC (port 50051 for dev)
+grpcurl -plaintext -d '{"name": "test"}' \
+  manager01-dev.xno:50051 hello.HelloService/SayHello
+```
+
+### Port reference
+
+| Environment | HTTP port | gRPC port |
+|---|---|---|
+| dev | 8081 | 50051 |
+| staging | 8082 | 50052 |
+| prod | 8083 | 50053 |
 
 ---
 
