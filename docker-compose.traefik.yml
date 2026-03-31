@@ -15,7 +15,7 @@ services:
       - "--providers.swarm.exposedByDefault=false"
       - "--providers.swarm.network=traefik-${RUN_ENV}"
       # Only discover services tagged for this environment — prevents cross-env routing
-      - "--providers.swarm.constraints=Label(`traefik.env`,`${RUN_ENV}`)"
+      - --providers.swarm.constraints=Label(`traefik.env`,`${RUN_ENV}`)
       # Entrypoint exposed to nginx
       - "--entrypoints.web.address=:80"
       # Dashboard — accessible at http://manager:${TRAEFIK_PORT}/dashboard/ (no separate port needed)
