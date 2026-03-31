@@ -140,17 +140,14 @@ docker network ls --filter driver=overlay
 Each environment gets its own Traefik v3 stack so services are fully isolated.
 
 ```bash
-# Dev — dashboard at manager:9081
-RUN_ENV=dev TRAEFIK_PORT=8081 TRAEFIK_DASHBOARD_PORT=9081 \
-  docker stack deploy -c docker-compose.traefik.yml traefik-dev
+# Dev — dashboard at http://manager:8081/dashboard/
+RUN_ENV=dev TRAEFIK_PORT=8081 docker stack deploy -c docker-compose.traefik.yml traefik-dev
 
-# Staging — dashboard at manager:9082
-RUN_ENV=staging TRAEFIK_PORT=8082 TRAEFIK_DASHBOARD_PORT=9082 \
-  docker stack deploy -c docker-compose.traefik.yml traefik-staging
+# Staging — dashboard at http://manager:8082/dashboard/
+RUN_ENV=staging TRAEFIK_PORT=8082 docker stack deploy -c docker-compose.traefik.yml traefik-staging
 
-# Prod — dashboard at manager:9080 (consider disabling dashboard in prod)
-RUN_ENV=prod TRAEFIK_PORT=8083 TRAEFIK_DASHBOARD_PORT=9083 \
-  docker stack deploy -c docker-compose.traefik.yml traefik-prod
+# Prod — dashboard at http://manager:8083/dashboard/ (disable api.insecure in prod)
+RUN_ENV=prod TRAEFIK_PORT=8083 docker stack deploy -c docker-compose.traefik.yml traefik-prod
 ```
 
 Verify:

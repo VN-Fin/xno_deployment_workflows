@@ -38,6 +38,8 @@ services:
         # Labels must be under deploy.labels in swarm mode so Traefik reads them
         # from the swarm service object (not the container).
         - "traefik.enable=true"
+        # Env tag — Traefik uses this to filter: only traefik-dev picks up env=dev services
+        - "traefik.env=${RUN_ENV}"
         # Router name includes ${RUN_ENV} so dev/staging/prod never collide in Traefik
         - "traefik.http.routers.hello_${RUN_ENV}.rule=PathPrefix(`/hello-api`)"
         - "traefik.http.routers.hello_${RUN_ENV}.entrypoints=web"
