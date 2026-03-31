@@ -1,15 +1,56 @@
-version: "3.9"
+version: '3.8'
+
+# Variables resolved by envsubst before `docker stack deploy`:
+#   ${root}                   — image tag from the build job (e.g. ghcr.io/org/repo/dev-app:abc1234)
+#   ${RUN_ENV}                — deployment environment: dev | staging | prod
+#   ${NODE_LABEL_CONSTRAINT}  — swarm placement constraint (e.g. "role == worker")
 
 services:
-  nginx:
-    image: ${IMAGE_NAME:-nginx:latest}
+  api:
+    image: ${root}
+    environment:
+      RUN_ENV: ${RUN_ENV}
+    networks:
+      # traefik-net: Traefik discovers this service and routes inbound traffic to it.
+      # This network has external (internet) access via the Traefik entrypoint.
+      - traefik-net
+      # app-net: Internal service mesh for service-to-service calls (no internet egress).
+      - app-net
     deploy:
-      replicas: 2
+      replicas: 1
       update_config:
         parallelism: 1
+        order: start-first
+        failure_action: rollback
         delay: 10s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
       restart_policy:
-        condition: on-failure
-    environment:
-      - NGINX_ENV=production
-      - APP_NAME=${SERVICE_NAME:-nginx-service}
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.labels.${NODE_LABEL_CONSTRAINT}
+      labels:
+        # Labels must be under deploy.labels in swarm mode so Traefik reads them
+        # from the swarm service object (not the container).
+        - "traefik.enable=true"
+        # Router name includes ${RUN_ENV} so dev/staging/prod never collide in Traefik
+        - "traefik.http.routers.hello_${RUN_ENV}.rule=PathPrefix(`/hello-api`)"
+        - "traefik.http.routers.hello_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.hello_${RUN_ENV}.loadbalancer.server.port=8000"
+
+networks:
+  # Internal overlay — service-to-service only, no internet egress by default.
+  # To make it truly air-gapped, create with: docker network create --driver overlay --internal app-net
+  app-net:
+    external: true
+
+  # Per-environment Traefik overlay. Only the matching Traefik instance is attached here,
+  # so dev services are invisible to staging/prod Traefik and vice versa.
+  traefik-net:
+    external: true
+    name: traefik-${RUN_ENV}

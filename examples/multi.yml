@@ -1,11 +1,17 @@
-name: Deploy All Services
+name: Deploy Multi-Service (Example)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  with:
-    environment: dev
-    services: "service1,service2,service3"
+  deploy:
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/workflow-swarm.yml@main
+    with:
+      environment: dev
+      services: "service1,service2,service3"  # each must have its own Dockerfile
+      stack: myapp
+      node_label: "role == worker"
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

@@ -1,0 +1,17 @@
+name: Deploy Hello API — Dev
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/new-worflow-swarm.yml@main
+    with:
+      environment: dev
+      services: root
+      stack: hello
+      node_label: "role == worker"
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

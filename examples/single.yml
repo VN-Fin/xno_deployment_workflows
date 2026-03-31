@@ -1,13 +1,17 @@
-name: Deploy Single Service
+name: Deploy Single Service (Example)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  build-deploy:
-    uses: vn-fin/xno_deployment_workflows/.github/workflows/workflow-swarm.yml
-  with:
-    environment: dev
-    services: "root"
+  deploy:
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/workflow-swarm.yml@main
+    with:
+      environment: dev
+      services: root        # "root" = single service at repo root
+      stack: myapp
+      node_label: "role == worker"
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

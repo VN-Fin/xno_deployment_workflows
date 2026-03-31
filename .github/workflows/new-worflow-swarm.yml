@@ -1,0 +1,132 @@
+name: Build and Deploy to Swarm
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment environment (e.g., dev, staging, prod)"
+        required: true
+        type: string
+      stack:
+        description: "Docker Swarm stack name"
+        required: true
+        type: string
+      services:
+        description: "Comma-separated list of service directories or 'root' for single service"
+        required: true
+        type: string
+      dockerfiles:
+        description: "Optional comma-separated list of Dockerfile paths (must align with services)"
+        required: false
+        type: string
+      node_label:
+        description: "Swarm placement constraint value (e.g., 'role == worker', 'env == prod')"
+        required: false
+        type: string
+        default: "role == worker"
+    secrets:
+      GHCR_TOKEN:
+        required: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(inputs.services == 'root' && '["root"]' || format('["{0}"]', join(inputs.services, '","'))) }}
+    outputs:
+      image_names: ${{ steps.set_output.outputs.image_names }}
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set metadata and build image
+        id: build
+        run: |
+          ENV=${{ inputs.environment }}
+          SERVICE=${{ matrix.service }}
+          IMAGE_TAG=${GITHUB_SHA::8}
+
+          if [ "$SERVICE" = "root" ]; then
+            CONTEXT="."
+            DOCKERFILE="${{ inputs.dockerfiles || 'Dockerfile' }}"
+            IMAGE_NAME="ghcr.io/${{ github.repository }}/${ENV}-app:${IMAGE_TAG}"
+          else
+            CONTEXT="$SERVICE"
+            DOCKERFILE="${{ inputs.dockerfiles || format('{0}/Dockerfile', matrix.service) }}"
+            IMAGE_NAME="ghcr.io/${{ github.repository }}/${ENV}-${SERVICE}:${IMAGE_TAG}"
+          fi
+
+          echo "Building image: $IMAGE_NAME"
+          echo "context=$CONTEXT"
+          echo "dockerfile=$DOCKERFILE"
+
+          docker buildx build \
+            --push \
+            --file "$DOCKERFILE" \
+            --tag "$IMAGE_NAME" \
+            --tag "ghcr.io/${{ github.repository }}/${ENV}-${SERVICE}:latest" \
+            "$CONTEXT"
+
+          echo "$SERVICE=$IMAGE_NAME" >> image_map.txt
+
+      - name: Set combined image outputs
+        id: set_output
+        run: |
+          echo "image_names<<EOF" >> $GITHUB_OUTPUT
+          cat image_map.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  deploy_local:
+    needs: build
+    runs-on:
+      - self-hosted
+      - ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Deploy stack with resolved image tags
+        env:
+          RUN_ENV: ${{ inputs.environment }}
+          NODE_LABEL_CONSTRAINT: ${{ inputs.node_label }}
+          # All other vars (POSTGRES_HOST, KAFKA_SERVERS, etc.) are inherited from
+          # the systemd runner service (e.g. actions.runner.*.service), scoped per environment
+        run: |
+
+          # Extract and export image tags from build output
+          while IFS='=' read -r key value; do
+            export "$key"="$value"
+          done < <(echo "${{ needs.build.outputs.image_names }}")
+
+          echo "Resolved images:"
+          env | grep ghcr
+
+          # Pull images explicitly
+          for IMAGE in $(env | grep ghcr | cut -d'=' -f2); do
+            echo "Pulling image: $IMAGE"
+            docker pull "$IMAGE" || exit 1
+          done
+
+          # Replace variables in docker-compose template
+          envsubst < docker-compose.yaml > docker-compose.resolved.yaml
+
+          # Deploy to swarm
+          docker stack deploy \
+            -c docker-compose.resolved.yaml \
+            ${{ inputs.stack }} \
+            --with-registry-auth \
+            --resolve-image never
