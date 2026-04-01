@@ -529,12 +529,10 @@ The script will:
 ### Install grpcurl
 
 ```bash
-# Ubuntu/Debian
-curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v1.9.2/grpcurl_1.9.2_linux_x86_64.tar.gz" \
-  | sudo tar -xz -C /usr/local/bin grpcurl
+curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v1.9.2/grpcurl_1.9.2_linux_x86_64.tar.gz"
 
-# macOS
-brew install grpcurl
+
+sudo tar -xz -C /usr/local/bin grpcurl
 ```
 
 ### List available gRPC services (uses server reflection)

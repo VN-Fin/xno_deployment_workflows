@@ -22,6 +22,7 @@ x-common-deploy: &common-deploy
   placement:
     constraints:
       - node.labels.${NODE_LABEL_CONSTRAINT}
+      - node.labels.env == ${RUN_ENV}
 
 services:
   api01:
