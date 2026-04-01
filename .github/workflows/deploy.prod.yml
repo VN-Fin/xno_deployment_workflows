@@ -14,6 +14,9 @@ jobs:
       environment: prod
       services: root
       stack: hello
+      build_args: |
+        EXAMPLE_ARG_01=arg_01
+        EXAMPLE_ARG_02=arg_02
       node_label: "role == worker"
     secrets:
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

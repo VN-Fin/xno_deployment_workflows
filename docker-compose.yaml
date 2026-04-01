@@ -5,54 +5,110 @@ version: '3.8'
 #   ${RUN_ENV}                — deployment environment: dev | staging | prod
 #   ${NODE_LABEL_CONSTRAINT}  — swarm placement constraint (e.g. "role == worker")
 
+x-common-deploy: &common-deploy
+  update_config:
+    parallelism: 1
+    order: start-first
+    failure_action: rollback
+    delay: 10s
+  rollback_config:
+    parallelism: 1
+    order: stop-first
+  restart_policy:
+    condition: any
+    delay: 5s
+    max_attempts: 3
+    window: 120s
+  placement:
+    constraints:
+      - node.labels.${NODE_LABEL_CONSTRAINT}
+
 services:
-  api:
+  api01:
     image: ${root}
+    entrypoint: ["uvicorn", "api_server_01:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
-      # traefik-net: Traefik discovers this service and routes inbound traffic to it.
-      # This network has external (internet) access via the Traefik entrypoint.
       - traefik-net
-      # app-net: Internal service mesh for service-to-service calls (no internet egress).
       - app-net
     deploy:
+      <<: *common-deploy
       replicas: 1
-      update_config:
-        parallelism: 1
-        order: start-first
-        failure_action: rollback
-        delay: 10s
-      rollback_config:
-        parallelism: 1
-        order: stop-first
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 3
-        window: 120s
-      placement:
-        constraints:
-          - node.labels.${NODE_LABEL_CONSTRAINT}
       labels:
-        # Labels must be under deploy.labels in swarm mode so Traefik reads them
-        # from the swarm service object (not the container).
         - "traefik.enable=true"
-        # Env tag — Traefik uses this to filter: only traefik-dev picks up env=dev services
         - "traefik.env=${RUN_ENV}"
-        # Router name includes ${RUN_ENV} so dev/staging/prod never collide in Traefik
-        - "traefik.http.routers.hello_${RUN_ENV}.rule=PathPrefix(`/hello-api`)"
-        - "traefik.http.routers.hello_${RUN_ENV}.entrypoints=web"
-        - "traefik.http.services.hello_${RUN_ENV}.loadbalancer.server.port=8000"
+        - "traefik.http.routers.api01_${RUN_ENV}.rule=PathPrefix(`/hello-api-01`)"
+        - "traefik.http.routers.api01_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.api01_${RUN_ENV}.loadbalancer.server.port=8000"
+
+  api02:
+    image: ${root}
+    entrypoint: ["uvicorn", "api_server_02:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      RUN_ENV: ${RUN_ENV}
+    networks:
+      - traefik-net
+      - app-net
+    deploy:
+      <<: *common-deploy
+      replicas: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        - "traefik.http.routers.api02_${RUN_ENV}.rule=PathPrefix(`/hello-api-02`)"
+        - "traefik.http.routers.api02_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.api02_${RUN_ENV}.loadbalancer.server.port=8000"
+
+  grpc01:
+    image: ${root}
+    entrypoint: ["python", "grpc_server_01.py"]
+    environment:
+      RUN_ENV: ${RUN_ENV}
+    networks:
+      - traefik-net
+      - app-net
+    deploy:
+      <<: *common-deploy
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        # Route hello01.HelloService01/* to this backend
+        - "traefik.http.routers.grpc01_${RUN_ENV}.rule=PathPrefix(`/hello01.HelloService01`)"
+        - "traefik.http.routers.grpc01_${RUN_ENV}.entrypoints=grpc"
+        - "traefik.http.services.grpc01_${RUN_ENV}.loadbalancer.server.port=50051"
+        - "traefik.http.services.grpc01_${RUN_ENV}.loadbalancer.server.scheme=h2c"
+        # Reflection router — grpcurl list/describe hits this service
+        # Priority is lower (higher number) so specific service routes win
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.rule=PathPrefix(`/grpc.reflection`)"
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.entrypoints=grpc"
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.priority=1"
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.service=grpc01_${RUN_ENV}"
+
+  grpc02:
+    image: ${root}
+    entrypoint: ["python", "grpc_server_02.py"]
+    environment:
+      RUN_ENV: ${RUN_ENV}
+    networks:
+      - traefik-net
+      - app-net
+    deploy:
+      <<: *common-deploy
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        # Route hello02.HelloService02/* to this backend
+        - "traefik.http.routers.grpc02_${RUN_ENV}.rule=PathPrefix(`/hello02.HelloService02`)"
+        - "traefik.http.routers.grpc02_${RUN_ENV}.entrypoints=grpc"
+        - "traefik.http.services.grpc02_${RUN_ENV}.loadbalancer.server.port=50051"
+        - "traefik.http.services.grpc02_${RUN_ENV}.loadbalancer.server.scheme=h2c"
 
 networks:
-  # Internal overlay — service-to-service only, no internet egress by default.
-  # To make it truly air-gapped, create with: docker network create --driver overlay --internal app-net
   app-net:
     external: true
-
-  # Per-environment Traefik overlay. Only the matching Traefik instance is attached here,
-  # so dev services are invisible to staging/prod Traefik and vice versa.
   traefik-net:
     external: true
     name: traefik-${RUN_ENV}
