@@ -19,12 +19,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the app code
 COPY . .
 
-# Generate gRPC stubs from proto
+# Generate gRPC stubs from all proto files
 RUN python -m grpc_tools.protoc \
     -I protos \
     --python_out=. \
     --grpc_python_out=. \
-    protos/hello.proto
+    protos/hello01.proto \
+    protos/hello02.proto
 
 # Expose ports: 8000 (HTTP), 50051 (gRPC)
 EXPOSE 8000 50051

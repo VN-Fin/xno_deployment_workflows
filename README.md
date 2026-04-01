@@ -10,20 +10,43 @@ Internet
    ▼
 [ nginx ]  (external, not in swarm)
    │
-   ├─── :8081 ──► [ traefik-dev ]     ──► dev services     (overlay: traefik-dev)
-   ├─── :8082 ──► [ traefik-staging ] ──► staging services (overlay: traefik-staging)
-   └─── :8083 ──► [ traefik-prod ]    ──► prod services    (overlay: traefik-prod)
+   ├─── :8081 (HTTP) ──► [ traefik-dev ]     ──► dev services     (overlay: traefik-dev)
+   ├─── :8082 (HTTP) ──► [ traefik-staging ] ──► staging services (overlay: traefik-staging)
+   └─── :8083 (HTTP) ──► [ traefik-prod ]    ──► prod services    (overlay: traefik-prod)
+   │
+   ├─── :50051 (gRPC) ──► [ traefik-dev ]
+   ├─── :50052 (gRPC) ──► [ traefik-staging ]
+   └─── :50053 (gRPC) ──► [ traefik-prod ]
 
-Each Traefik instance only sees services on its own overlay network.
+Each Traefik instance only sees services tagged with traefik.env=<env>
+and connected to its overlay network.
 Services also share an internal app-net for service-to-service calls.
 
 Docker Swarm Cluster
-┌─────────────────────────────────────────────────┐
-│  Manager node (runs Traefik + GitHub runner)    │
-│  Worker node 1 (role=worker, env=dev)           │
-│  Worker node 2 (role=worker, env=staging)       │
-│  Worker node 3 (role=worker, env=prod)          │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Manager node (runs Traefik + GitHub runner)                │
+│  Worker node(s) (role=worker)                               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Stack: hello-dev                                           │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  api01   │  │  api02   │  │  grpc01  │  │  grpc02  │   │
+│  │ x1..4    │  │ x1..4    │  │ x1..4    │  │ x1..4    │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│       │              │             │              │         │
+│       └──────────────┴─────────────┴──────────────┘         │
+│               traefik-dev + app-net                         │
+│                                                             │
+│  Stack: hello-staging  (same layout, traefik-staging)       │
+│  Stack: hello-prod     (same layout, traefik-prod)          │
+└─────────────────────────────────────────────────────────────┘
+
+Routing:
+  HTTP:  /hello-api-01 ──► api01 (replicas 1–4)
+         /hello-api-02 ──► api02 (replicas 1–4)
+  gRPC:  /hello01.HelloService01/* ──► grpc01 (replicas 1–4)
+         /hello02.HelloService02/* ──► grpc02 (replicas 1–4)
+         /grpc.reflection/*        ──► grpc01 (reflection)
 ```
 
 ## Prerequisites
@@ -288,6 +311,7 @@ In each **project repository** → **Settings → Secrets and variables → Acti
 | `services` | yes | `root` for single service, or `service1,service2` for multi |
 | `dockerfiles` | no | Custom Dockerfile path(s), aligned with services |
 | `node_label` | no | Swarm placement constraint. Default: `role == worker` |
+| `build_args` | no | Newline-separated `KEY=VALUE` pairs passed as `--build-arg` to docker build |
 
 ### Caller workflow examples
 
@@ -303,7 +327,7 @@ on:
 
 jobs:
   deploy:
-    uses: vn-fin/xno_deployment_workflows/.github/workflows/workflow-swarm.yml@main
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/new-worflow-swarm.yml@main
     with:
       environment: dev
       services: root
@@ -325,7 +349,7 @@ on:
 
 jobs:
   deploy:
-    uses: vn-fin/xno_deployment_workflows/.github/workflows/workflow-swarm.yml@main
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/new-worflow-swarm.yml@main
     with:
       environment: staging
       services: root
@@ -347,7 +371,7 @@ on:
 
 jobs:
   deploy:
-    uses: vn-fin/xno_deployment_workflows/.github/workflows/workflow-swarm.yml@main
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/new-worflow-swarm.yml@main
     with:
       environment: prod
       services: root
@@ -356,6 +380,36 @@ jobs:
     secrets:
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
 ```
+
+**Deploy with build args (e.g. Vite frontend):**
+
+```yaml
+name: Deploy Web — Dev
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/new-worflow-swarm.yml@main
+    with:
+      environment: dev
+      services: root
+      stack: xweb
+      build_args: |
+        VITE_API_BASE_URL=https://public.dev.xno.vn
+        VITE_SOCKET_URL=wss://public.dev.xno.vn
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+```
+
+> **Note:** Build args are baked into the image at build time. In the Dockerfile, use `ARG` to receive them and `ENV` to persist them at runtime:
+> ```dockerfile
+> ARG VITE_API_BASE_URL=https://default.example.com
+> ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+> ```
 
 ---
 
@@ -376,20 +430,53 @@ deploy:
     - "traefik.http.services.myapp_${RUN_ENV}.loadbalancer.server.port=3000"
 ```
 
-**gRPC service:**
+**Single gRPC service (catch-all):**
 
 ```yaml
 deploy:
   labels:
     - "traefik.enable=true"
     - "traefik.env=${RUN_ENV}"
-    # Route by gRPC service path (package.ServiceName)
-    - "traefik.http.routers.myapp_grpc_${RUN_ENV}.rule=PathPrefix(`/mypackage.MyService`)"
+    - "traefik.http.routers.myapp_grpc_${RUN_ENV}.rule=PathPrefix(`/`)"
     - "traefik.http.routers.myapp_grpc_${RUN_ENV}.entrypoints=grpc"
-    # h2c = HTTP/2 cleartext (gRPC without TLS between Traefik and backend)
     - "traefik.http.services.myapp_grpc_${RUN_ENV}.loadbalancer.server.port=50051"
     - "traefik.http.services.myapp_grpc_${RUN_ENV}.loadbalancer.server.scheme=h2c"
 ```
+
+**Multiple gRPC services (route by package path):**
+
+Each gRPC service gets a `PathPrefix` matching its proto package + service name. One service also handles the reflection path so `grpcurl list` works.
+
+```yaml
+# grpc01 — handles hello01.HelloService01 + reflection
+grpc01:
+  deploy:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.env=${RUN_ENV}"
+      - "traefik.http.routers.grpc01_${RUN_ENV}.rule=PathPrefix(`/hello01.HelloService01`)"
+      - "traefik.http.routers.grpc01_${RUN_ENV}.entrypoints=grpc"
+      - "traefik.http.services.grpc01_${RUN_ENV}.loadbalancer.server.port=50051"
+      - "traefik.http.services.grpc01_${RUN_ENV}.loadbalancer.server.scheme=h2c"
+      # Reflection router — grpcurl list/describe hits this service
+      - "traefik.http.routers.grpc_reflect_${RUN_ENV}.rule=PathPrefix(`/grpc.reflection`)"
+      - "traefik.http.routers.grpc_reflect_${RUN_ENV}.entrypoints=grpc"
+      - "traefik.http.routers.grpc_reflect_${RUN_ENV}.priority=1"
+      - "traefik.http.routers.grpc_reflect_${RUN_ENV}.service=grpc01_${RUN_ENV}"
+
+# grpc02 — handles hello02.HelloService02
+grpc02:
+  deploy:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.env=${RUN_ENV}"
+      - "traefik.http.routers.grpc02_${RUN_ENV}.rule=PathPrefix(`/hello02.HelloService02`)"
+      - "traefik.http.routers.grpc02_${RUN_ENV}.entrypoints=grpc"
+      - "traefik.http.services.grpc02_${RUN_ENV}.loadbalancer.server.port=50051"
+      - "traefik.http.services.grpc02_${RUN_ENV}.loadbalancer.server.scheme=h2c"
+```
+
+> **Note:** `grpcurl list` only shows services from the server handling `/grpc.reflection`. To call a specific service, use its full path directly (e.g. `hello02.HelloService02/SayHello`).
 
 The service must also connect to the `traefik-${RUN_ENV}` network so the correct Traefik instance can discover it:
 
@@ -452,6 +539,8 @@ brew install grpcurl
 
 ### List available gRPC services (uses server reflection)
 
+Reflection routes to `grpc01` by default, so `list` shows grpc01's services:
+
 ```bash
 # Dev (gRPC port 50051)
 grpcurl -plaintext manager01-dev.xno:50051 list
@@ -464,52 +553,86 @@ Expected output:
 
 ```
 grpc.reflection.v1alpha.ServerReflection
-hello.HelloService
+hello01.HelloService01
 ```
 
 ### Describe a service
 
 ```bash
-grpcurl -plaintext manager01-dev.xno:50051 describe hello.HelloService
+grpcurl -plaintext manager01-dev.xno:50051 describe hello01.HelloService01
 ```
 
-### Call SayHello RPC
+### Call each gRPC service
+
+Traefik routes by the gRPC package path — each service is reachable independently:
 
 ```bash
-# Dev
+# Call HelloService01 (dev)
 grpcurl -plaintext -d '{"name": "world"}' \
-  manager01-dev.xno:50051 hello.HelloService/SayHello
+  manager01-dev.xno:50051 hello01.HelloService01/SayHello
 
-# Staging
+# Call HelloService02 (dev)
 grpcurl -plaintext -d '{"name": "world"}' \
-  manager01-dev.xno:50052 hello.HelloService/SayHello
+  manager01-dev.xno:50051 hello02.HelloService02/SayHello
+
+# Same services on staging (port 50052)
+grpcurl -plaintext -d '{"name": "world"}' \
+  manager01-dev.xno:50052 hello01.HelloService01/SayHello
+
+grpcurl -plaintext -d '{"name": "world"}' \
+  manager01-dev.xno:50052 hello02.HelloService02/SayHello
 ```
 
 Expected output:
 
 ```json
-{
-  "message": "hello dev from gRPC, world!"
-}
+{"message": "hello dev from gRPC server 01, world!"}
+{"message": "hello dev from gRPC server 02, world!"}
 ```
 
 ### Test from another service inside the swarm (service-to-service via app-net)
 
 ```bash
 # From any container on app-net, use the swarm DNS name:
-# <stack>_<service>:<port>
-grpcurl -plaintext hello-dev_grpc:50051 hello.HelloService/SayHello -d '{"name": "internal"}'
+# <stack>-<env>_<service>:<port>
+grpcurl -plaintext hello-dev_grpc01:50051 hello01.HelloService01/SayHello -d '{"name": "internal"}'
+grpcurl -plaintext hello-dev_grpc02:50051 hello02.HelloService02/SayHello -d '{"name": "internal"}'
 ```
 
-### Test HTTP API alongside gRPC
+### Test HTTP APIs
 
 ```bash
-# HTTP API (port 8081 for dev)
-curl http://manager01-dev.xno:8081/hello-api
+# API 01 (dev, port 8081)
+curl http://manager01-dev.xno:8081/hello-api-01
 
-# gRPC (port 50051 for dev)
+# API 02 (dev, port 8081 — same port, different path)
+curl http://manager01-dev.xno:8081/hello-api-02
+
+# Staging
+curl http://manager01-dev.xno:8082/hello-api-01
+curl http://manager01-dev.xno:8082/hello-api-02
+```
+
+Expected output:
+
+```json
+{"service": "api-01", "message": "hello dev", "build_args": {"EXAMPLE_ARG_01": "arg_01", "EXAMPLE_ARG_02": "arg_02"}}
+{"service": "api-02", "message": "hello dev", "build_args": {"EXAMPLE_ARG_01": "arg_01", "EXAMPLE_ARG_02": "arg_02"}}
+```
+
+### Test HTTP + gRPC together
+
+```bash
+# HTTP
+curl http://manager01-dev.xno:8081/hello-api-01
+curl http://manager01-dev.xno:8081/hello-api-02
+
+# gRPC (same Traefik, different entrypoint)
 grpcurl -plaintext -d '{"name": "test"}' \
-  manager01-dev.xno:50051 hello.HelloService/SayHello
+  manager01-dev.xno:50051 hello01.HelloService01/SayHello
+
+grpcurl -plaintext -d '{"name": "test"}' \
+  manager01-dev.xno:50051 hello02.HelloService02/SayHello
 ```
 
 ### Port reference
@@ -522,6 +645,62 @@ grpcurl -plaintext -d '{"name": "test"}' \
 
 ---
 
+## Scaling Replicas
+
+Each service supports configurable replicas via environment variables (default: 1). Set them in the runner's systemd service file or pass via `envsubst`.
+
+| Variable | Service | Default |
+|---|---|---|
+| `API01_REPLICAS` | api01 (HTTP) | 1 |
+| `API02_REPLICAS` | api02 (HTTP) | 1 |
+| `GRPC01_REPLICAS` | grpc01 (gRPC) | 1 |
+| `GRPC02_REPLICAS` | grpc02 (gRPC) | 1 |
+
+### Set replicas in systemd (persistent per env)
+
+```ini
+# /etc/systemd/system/actions.runner.<org>.<name>-dev.service
+[Service]
+Environment="API01_REPLICAS=2"
+Environment="API02_REPLICAS=2"
+Environment="GRPC01_REPLICAS=1"
+Environment="GRPC02_REPLICAS=1"
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart actions.runner.<org>.<name>-dev.service
+```
+
+### Scale manually (immediate, non-persistent)
+
+```bash
+# Scale api01 to 4 replicas
+docker service scale hello-dev_api01=4
+
+# Scale all services at once
+docker service scale hello-dev_api01=2 hello-dev_api02=2 hello-dev_grpc01=3 hello-dev_grpc02=3
+```
+
+Traefik automatically load-balances across all replicas.
+
+---
+
+## Demo Services Reference
+
+This repo ships with 4 demo services sharing a single Docker image:
+
+| Service | Type | Entrypoint | Route | Port |
+|---|---|---|---|---|
+| `api01` | HTTP (FastAPI) | `api_server_01.py` | `/hello-api-01` | 8000 |
+| `api02` | HTTP (FastAPI) | `api_server_02.py` | `/hello-api-02` | 8000 |
+| `grpc01` | gRPC | `grpc_server_01.py` | `/hello01.HelloService01/*` | 50051 |
+| `grpc02` | gRPC | `grpc_server_02.py` | `/hello02.HelloService02/*` | 50051 |
+
+All services run from the same image — the `entrypoint` in docker-compose selects which server to start.
+
+---
+
 ## Useful Commands
 
 ```bash
@@ -529,19 +708,28 @@ grpcurl -plaintext -d '{"name": "test"}' \
 docker stack ls
 
 # List services in a stack
-docker stack services hello
+docker stack services hello-dev
 
 # View service logs
-docker service logs hello_api --follow
+docker service logs hello-dev_api01 --follow
+docker service logs hello-dev_api02 --follow
+docker service logs hello-dev_grpc01 --follow
+docker service logs hello-dev_grpc02 --follow
+
+# Check replica status
+docker service ls --filter name=hello-dev
 
 # Scale a service
-docker service scale hello_api=3
+docker service scale hello-dev_api01=4
+
+# Scale multiple services
+docker service scale hello-dev_api01=2 hello-dev_api02=2 hello-dev_grpc01=3 hello-dev_grpc02=3
 
 # Redeploy a single service (rolling update)
-docker service update --force hello_api
+docker service update --force hello-dev_api01
 
 # Remove a stack
-docker stack rm hello
+docker stack rm hello-dev
 
 # Inspect node labels
 docker node ls -q | xargs docker node inspect --format '{{.Description.Hostname}}: {{json .Spec.Labels}}'

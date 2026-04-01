@@ -24,9 +24,9 @@ x-common-deploy: &common-deploy
       - node.labels.${NODE_LABEL_CONSTRAINT}
 
 services:
-  api:
+  api01:
     image: ${root}
-    entrypoint: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    entrypoint: ["uvicorn", "api_server_01:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
@@ -38,14 +38,31 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.env=${RUN_ENV}"
-        # HTTP router
-        - "traefik.http.routers.hello_${RUN_ENV}.rule=PathPrefix(`/hello-api`)"
-        - "traefik.http.routers.hello_${RUN_ENV}.entrypoints=web"
-        - "traefik.http.services.hello_${RUN_ENV}.loadbalancer.server.port=8000"
+        - "traefik.http.routers.api01_${RUN_ENV}.rule=PathPrefix(`/hello-api-01`)"
+        - "traefik.http.routers.api01_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.api01_${RUN_ENV}.loadbalancer.server.port=8000"
 
-  grpc:
+  api02:
     image: ${root}
-    entrypoint: ["python", "grpc_server.py"]
+    entrypoint: ["uvicorn", "api_server_02:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      RUN_ENV: ${RUN_ENV}
+    networks:
+      - traefik-net
+      - app-net
+    deploy:
+      <<: *common-deploy
+      replicas: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        - "traefik.http.routers.api02_${RUN_ENV}.rule=PathPrefix(`/hello-api-02`)"
+        - "traefik.http.routers.api02_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.api02_${RUN_ENV}.loadbalancer.server.port=8000"
+
+  grpc01:
+    image: ${root}
+    entrypoint: ["python", "grpc_server_01.py"]
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
@@ -57,13 +74,37 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.env=${RUN_ENV}"
-        # gRPC router — catch-all on grpc entrypoint (includes reflection path)
-        # For multiple gRPC services, use PathPrefix(`/package.Service`) per service
-        # and add a separate router for `/grpc.reflection` pointing to one of them.
-        - "traefik.http.routers.hello_grpc_${RUN_ENV}.rule=PathPrefix(`/`)"
-        - "traefik.http.routers.hello_grpc_${RUN_ENV}.entrypoints=grpc"
-        - "traefik.http.services.hello_grpc_${RUN_ENV}.loadbalancer.server.port=50051"
-        - "traefik.http.services.hello_grpc_${RUN_ENV}.loadbalancer.server.scheme=h2c"
+        # Route hello01.HelloService01/* to this backend
+        - "traefik.http.routers.grpc01_${RUN_ENV}.rule=PathPrefix(`/hello01.HelloService01`)"
+        - "traefik.http.routers.grpc01_${RUN_ENV}.entrypoints=grpc"
+        - "traefik.http.services.grpc01_${RUN_ENV}.loadbalancer.server.port=50051"
+        - "traefik.http.services.grpc01_${RUN_ENV}.loadbalancer.server.scheme=h2c"
+        # Reflection router — grpcurl list/describe hits this service
+        # Priority is lower (higher number) so specific service routes win
+        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.rule=PathPrefix(`/grpc.reflection`)"
+        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.entrypoints=grpc"
+        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.priority=1"
+        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.service=grpc01_${RUN_ENV}"
+
+  grpc02:
+    image: ${root}
+    entrypoint: ["python", "grpc_server_02.py"]
+    environment:
+      RUN_ENV: ${RUN_ENV}
+    networks:
+      - traefik-net
+      - app-net
+    deploy:
+      <<: *common-deploy
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        # Route hello02.HelloService02/* to this backend
+        - "traefik.http.routers.grpc02_${RUN_ENV}.rule=PathPrefix(`/hello02.HelloService02`)"
+        - "traefik.http.routers.grpc02_${RUN_ENV}.entrypoints=grpc"
+        - "traefik.http.services.grpc02_${RUN_ENV}.loadbalancer.server.port=50051"
+        - "traefik.http.services.grpc02_${RUN_ENV}.loadbalancer.server.scheme=h2c"
 
 networks:
   app-net:
