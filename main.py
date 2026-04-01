@@ -7,4 +7,12 @@ app = FastAPI()
 @app.get("/hello-api")
 def hello():
     env_name = os.getenv("RUN_ENV", "unknown")
-    return {"message": f"hello {env_name}"}
+    arg_01 = os.getenv("EXAMPLE_ARG_01", "not set")
+    arg_02 = os.getenv("EXAMPLE_ARG_02", "not set")
+    return {
+        "message": f"hello {env_name}",
+        "build_args": {
+            "EXAMPLE_ARG_01": arg_01,
+            "EXAMPLE_ARG_02": arg_02,
+        },
+    }

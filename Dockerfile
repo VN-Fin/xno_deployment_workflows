@@ -1,6 +1,14 @@
 # Use the official Python image
 FROM python:3.10-slim
 
+# Build args — baked into the image at build time
+ARG EXAMPLE_ARG_01=default_01
+ARG EXAMPLE_ARG_02=default_02
+
+# Persist build args as env vars so the app can read them at runtime
+ENV EXAMPLE_ARG_01=${EXAMPLE_ARG_01}
+ENV EXAMPLE_ARG_02=${EXAMPLE_ARG_02}
+
 # Set the working directory
 WORKDIR /app
 

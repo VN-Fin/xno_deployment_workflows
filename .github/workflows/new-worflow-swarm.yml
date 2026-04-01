@@ -24,6 +24,11 @@ on:
         required: false
         type: string
         default: "role == worker"
+      build_args:
+        description: "Newline-separated KEY=VALUE pairs passed as --build-arg to docker build"
+        required: false
+        type: string
+        default: ""
     secrets:
       GHCR_TOKEN:
         required: true
@@ -67,11 +72,18 @@ jobs:
           echo "context=$CONTEXT"
           echo "dockerfile=$DOCKERFILE"
 
+          # Convert newline-separated build_args input to --build-arg flags
+          BUILD_ARG_FLAGS=""
+          while IFS= read -r line; do
+            [[ -n "$line" ]] && BUILD_ARG_FLAGS="$BUILD_ARG_FLAGS --build-arg $line"
+          done <<< "${{ inputs.build_args }}"
+
           docker buildx build \
             --push \
             --file "$DOCKERFILE" \
             --tag "$IMAGE_NAME" \
             --tag "ghcr.io/${{ github.repository }}/${ENV}-${SERVICE}:latest" \
+            $BUILD_ARG_FLAGS \
             "$CONTEXT"
 
           echo "$SERVICE=$IMAGE_NAME" >> image_map.txt
