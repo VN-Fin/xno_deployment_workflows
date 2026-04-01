@@ -81,10 +81,10 @@ services:
         - "traefik.http.services.grpc01_${RUN_ENV}.loadbalancer.server.scheme=h2c"
         # Reflection router — grpcurl list/describe hits this service
         # Priority is lower (higher number) so specific service routes win
-        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.rule=PathPrefix(`/grpc.reflection`)"
-        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.entrypoints=grpc"
-        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.priority=1"
-        - "traefik.http.routers.grpc_reflect_${RUN_ENV}.service=grpc01_${RUN_ENV}"
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.rule=PathPrefix(`/grpc.reflection`)"
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.entrypoints=grpc"
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.priority=1"
+        # - "traefik.http.routers.grpc_reflect_${RUN_ENV}.service=grpc01_${RUN_ENV}"
 
   grpc02:
     image: ${root}
