@@ -629,9 +629,11 @@ curl http://manager01-dev.xno:8081/hello-api-02
 
 # gRPC (same Traefik, different entrypoint)
 grpcurl -plaintext -d '{"name": "test"}' \
+  -proto protos/hello01.proto \
   manager01-dev.xno:50051 hello01.HelloService01/SayHello
 
 grpcurl -plaintext -d '{"name": "test"}' \
+  -proto protos/hello02.proto \
   manager01-dev.xno:50051 hello02.HelloService02/SayHello
 ```
 
