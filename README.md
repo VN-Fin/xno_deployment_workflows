@@ -5,48 +5,74 @@ Reusable GitHub Actions workflows for building and deploying Docker services to 
 ## Architecture
 
 ```
-Internet
-   │
-   ▼
-[ nginx ]  (external, not in swarm)
-   │
-   ├─── :8081 (HTTP) ──► [ traefik-dev ]     ──► dev services     (overlay: traefik-dev)
-   ├─── :8082 (HTTP) ──► [ traefik-staging ] ──► staging services (overlay: traefik-staging)
-   └─── :8083 (HTTP) ──► [ traefik-prod ]    ──► prod services    (overlay: traefik-prod)
-   │
-   ├─── :50051 (gRPC) ──► [ traefik-dev ]
-   ├─── :50052 (gRPC) ──► [ traefik-staging ]
-   └─── :50053 (gRPC) ──► [ traefik-prod ]
+                         ┌──────────────┐
+                         │   Internet   │
+                         └──────┬───────┘
+                                │
+                                ▼
+                       ┌────────────────┐
+                       │     nginx      │
+                       │ (external)     │
+                       └──────┬─────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+  :8081 HTTP            :8082 HTTP            :8083 HTTP
+  :50051 gRPC           :50052 gRPC           :50053 gRPC
+        │                     │                     │
+        ▼                     ▼                     ▼
+ ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+ │ traefik-dev  │     │traefik-stg   │     │ traefik-prod │
+ └──────┬───────┘     └──────┬───────┘     └──────┬───────┘
+        │                     │                     │
+        ▼                     ▼                     ▼
+   Dev Services         Staging Services        Prod Services
+ (overlay: dev)       (overlay: staging)     (overlay: prod)
 
-Each Traefik instance only sees services tagged with traefik.env=<env>
-and connected to its overlay network.
-Services also share an internal app-net for service-to-service calls.
+        └───────────────┬───────────────────────┘
+                        │
+                 Shared internal
+                    app-net
 
-Docker Swarm Cluster
-┌─────────────────────────────────────────────────────────────┐
-│  Manager node (runs Traefik + GitHub runner)                │
-│  Worker node(s) (role=worker)                               │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Stack: hello-dev                                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  api01   │  │  api02   │  │  grpc01  │  │  grpc02  │   │
-│  │ x1..4    │  │ x1..4    │  │ x1..4    │  │ x1..4    │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-│       │              │             │              │         │
-│       └──────────────┴─────────────┴──────────────┘         │
-│               traefik-dev + app-net                         │
-│                                                             │
-│  Stack: hello-staging  (same layout, traefik-staging)       │
-│  Stack: hello-prod     (same layout, traefik-prod)          │
-└─────────────────────────────────────────────────────────────┘
 
-Routing:
-  HTTP:  /hello-api-01 ──► api01 (replicas 1–4)
-         /hello-api-02 ──► api02 (replicas 1–4)
-  gRPC:  /hello01.HelloService01/* ──► grpc01 (replicas 1–4)
-         /hello02.HelloService02/* ──► grpc02 (replicas 1–4)
-         /grpc.reflection/*        ──► grpc01 (reflection)
+==============================================================
+                DOCKER SWARM CLUSTER
+==============================================================
+
+ ┌──────────────────────────────────────────────────────────┐
+ │ Manager Node                                             │
+ │ - Traefik instances                                      │
+ │ - GitHub Runner                                          │
+ │                                                          │
+ │ Worker Nodes (role=worker)                               │
+ ├──────────────────────────────────────────────────────────┤
+ │                                                          │
+ │  STACK: hello-dev                                        │
+ │                                                          │
+ │   ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐         │
+ │   │ api01  │  │ api02  │  │ grpc01 │  │ grpc02 │         │
+ │   │ x1..4  │  │ x1..4  │  │ x1..4  │  │ x1..4  │         │
+ │   └────┬───┘  └────┬───┘  └────┬───┘  └────┬───┘         │
+ │        └───────────┴───────────┴───────────┘             │
+ │                 traefik-dev + app-net                    │
+ │                                                          │
+ │  STACK: hello-staging (same layout, traefik-staging)     │
+ │  STACK: hello-prod    (same layout, traefik-prod)        │
+ │                                                          │
+ └──────────────────────────────────────────────────────────┘
+
+
+======================== ROUTING ==============================
+
+HTTP:
+  /hello-api-01  ───► api01 (replicas 1–4)
+  /hello-api-02  ───► api02 (replicas 1–4)
+
+gRPC:
+  /hello01.HelloService01/* ───► grpc01 (replicas 1–4)
+  /hello02.HelloService02/* ───► grpc02 (replicas 1–4)
+  /grpc.reflection/*        ───► grpc01
 ```
 
 ## Prerequisites
