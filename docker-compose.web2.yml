@@ -32,7 +32,7 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.env=${RUN_ENV}"
-        - "traefik.http.routers.web2_${RUN_ENV}.rule=Host(`web2.dev.example.com`)"
+        - "traefik.http.routers.web2_${RUN_ENV}.rule=Host(`web2.${RUN_ENV}.example.com`)"
         - "traefik.http.routers.web2_${RUN_ENV}.entrypoints=web"
         - "traefik.http.services.web2_${RUN_ENV}.loadbalancer.server.port=80"
 
