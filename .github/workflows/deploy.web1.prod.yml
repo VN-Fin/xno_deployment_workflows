@@ -1,0 +1,22 @@
+name: Deploy Web1 — Prod
+
+on:
+  push:
+    branches: [prod]
+    paths:
+      - 'web1/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/new-worflow-swarm.yml@main
+    with:
+      environment: prod
+      services: web1          # builds from web1/ → image var ${web1} in compose
+      stack: web1             # swarm stack name: web1-prod
+      compose_file: docker-compose.web1.yml
+      node_label: "role == worker"
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

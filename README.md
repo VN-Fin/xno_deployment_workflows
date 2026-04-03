@@ -591,11 +591,49 @@ curl http://manager01-dev.xno:8082/hello-api-01
 curl http://manager01-dev.xno:8082/hello-api-02
 ```
 
-Expected output:
+### Test Web (static sites)
 
-```json
-{"service": "api-01", "message": "hello dev", "build_args": {"EXAMPLE_ARG_01": "arg_01", "EXAMPLE_ARG_02": "arg_02"}}
-{"service": "api-02", "message": "hello dev", "build_args": {"EXAMPLE_ARG_01": "arg_01", "EXAMPLE_ARG_02": "arg_02"}}
+Web services are routed by **Host header**, not path. Pass the domain with `-H` or use a real DNS/hosts entry.
+
+```bash
+# web1 — dev (port 8081, host: web1.dev.example.com)
+curl -H "Host: web1.dev.example.com" http://manager01-dev.xno:8081/
+
+# web2 — dev (port 8081, host: web2.dev.example.com)
+curl -H "Host: web2.dev.example.com" http://manager01-dev.xno:8081/
+
+# Check health endpoint (no host header needed per service, but good to verify nginx)
+curl -H "Host: web1.dev.example.com" http://manager01-dev.xno:8081/healthz
+# → ok
+```
+
+If your DNS resolves `web1.dev.example.com` → manager node IP, omit `-H`:
+
+```bash
+curl http://web1.dev.example.com:8081/
+curl http://web2.dev.example.com:8081/
+```
+
+#### Access from Chrome (local dev)
+
+For local development, add the manager node IP to your machine's `hosts` file — no DNS server needed.
+
+```bash
+sudo nano /etc/hosts
+```
+
+Add at the bottom (replace `10.10.1.10` with your manager node IP):
+
+```
+10.10.1.10  web1.dev.example.com
+10.10.1.10  web2.dev.example.com
+```
+
+Then open browser:
+
+```
+http://web1.dev.example.com:8081
+http://web2.dev.example.com:8081
 ```
 
 ### Test HTTP + gRPC together
