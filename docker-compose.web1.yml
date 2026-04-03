@@ -1,0 +1,42 @@
+version: '3.8'
+
+# Variables resolved by envsubst before `docker stack deploy`:
+#   ${web1}                   — image tag built from web1/Dockerfile
+#   ${RUN_ENV}                — deployment environment: dev | staging | prod
+#   ${NODE_LABEL_CONSTRAINT}  — swarm placement constraint (e.g. "role == worker")
+
+services:
+  web1:
+    image: ${web1}
+    networks:
+      - traefik-net
+    deploy:
+      replicas: ${WEB1_REPLICAS:-2}
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.labels.${NODE_LABEL_CONSTRAINT}
+          - node.labels.env == ${RUN_ENV}
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        - "traefik.http.routers.web1_${RUN_ENV}.rule=Host(`web1.dev.example.com`)"
+        - "traefik.http.routers.web1_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.web1_${RUN_ENV}.loadbalancer.server.port=80"
+
+networks:
+  traefik-net:
+    external: true
+    name: traefik-${RUN_ENV}

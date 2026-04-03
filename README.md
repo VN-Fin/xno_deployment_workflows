@@ -219,55 +219,9 @@ Edit `docker-compose.traefik.yml` and remove or replace:
 
 ---
 
-## Step 6 — Configure Nginx (external)
-
-Nginx lives outside the swarm and routes traffic to the correct Traefik by environment.
-
-```nginx
-upstream traefik_dev     { server <MANAGER_IP>:8081; }
-upstream traefik_staging { server <MANAGER_IP>:8082; }
-upstream traefik_prod    { server <MANAGER_IP>:8083; }
-
-# Dev environment
-server {
-    listen 80;
-    server_name dev.yourdomain.com;
-    location / {
-        proxy_pass         http://traefik_dev;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-
-# Staging environment
-server {
-    listen 80;
-    server_name staging.yourdomain.com;
-    location / {
-        proxy_pass         http://traefik_staging;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-
-# Production
-server {
-    listen 80;
-    server_name yourdomain.com;
-    location / {
-        proxy_pass         http://traefik_prod;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-```
-
 ---
 
-## Step 7 — Set Up GitHub Actions Runners
+## Step 6 — Set Up GitHub Actions Runners
 
 Each environment needs a **self-hosted runner on the manager node**, labeled with the environment name. The runner must be on the manager because only the manager can run `docker stack deploy`.
 
@@ -314,7 +268,7 @@ sudo systemctl restart actions.runner.<org>.<name>-<env>.service
 
 ---
 
-## Step 8 — Configure GitHub Secrets
+## Step 7 — Configure GitHub Secrets
 
 In each **project repository** → **Settings → Secrets and variables → Actions**:
 
@@ -326,7 +280,7 @@ In each **project repository** → **Settings → Secrets and variables → Acti
 
 ---
 
-## Step 9 — Deploy a Service
+## Step 8 — Deploy a Service
 
 ### Workflow inputs reference
 

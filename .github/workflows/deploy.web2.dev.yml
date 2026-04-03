@@ -1,0 +1,20 @@
+name: Deploy Web2 — Dev
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web2/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: vn-fin/xno_deployment_workflows/.github/workflows/new-worflow-swarm.yml@main
+    with:
+      environment: dev
+      services: web2          # builds from web2/ → image var ${web2} in compose
+      stack: web2             # swarm stack name: web2-dev
+      compose_file: docker-compose.web2.yml
+      node_label: "role == worker"
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

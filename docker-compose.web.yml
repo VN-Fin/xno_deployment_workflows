@@ -1,0 +1,45 @@
+version: '3.8'
+
+# Variables resolved by envsubst before `docker stack deploy`:
+#   ${web}                    — image tag built from web/Dockerfile
+#   ${RUN_ENV}                — deployment environment: dev | staging | prod
+#   ${NODE_LABEL_CONSTRAINT}  — swarm placement constraint (e.g. "role == worker")
+#   ${WEB_NAME}               — unique site identifier (e.g. "web1", "web2") — set in runner systemd env
+#   ${WEB_HOST}               — public hostname (e.g. "web1.example.com")    — set in runner systemd env
+
+services:
+  web:
+    image: ${web}
+    networks:
+      - traefik-net
+    deploy:
+      replicas: ${WEB_REPLICAS:-2}
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.labels.${NODE_LABEL_CONSTRAINT}
+          - node.labels.env == ${RUN_ENV}
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        # Route by domain — set WEB_HOST in the runner's systemd environment
+        - "traefik.http.routers.${WEB_NAME}_${RUN_ENV}.rule=Host(`${WEB_HOST}`)"
+        - "traefik.http.routers.${WEB_NAME}_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.${WEB_NAME}_${RUN_ENV}.loadbalancer.server.port=80"
+
+networks:
+  traefik-net:
+    external: true
+    name: traefik-${RUN_ENV}

@@ -29,6 +29,11 @@ on:
         required: false
         type: string
         default: ""
+      compose_file:
+        description: "Docker Compose file to deploy (default: docker-compose.yaml)"
+        required: false
+        type: string
+        default: "docker-compose.yaml"
     secrets:
       GHCR_TOKEN:
         required: true
@@ -134,7 +139,7 @@ jobs:
           done
 
           # Replace variables in docker-compose template
-          envsubst < docker-compose.yaml > docker-compose.resolved.yaml
+          envsubst < ${{ inputs.compose_file }} > docker-compose.resolved.yaml
 
           # Deploy to swarm — stack name includes environment to prevent cross-env conflicts
           # e.g. stack=hello + environment=dev → hello-dev
