@@ -37,7 +37,7 @@ services:
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
-      - no-internet-net
+      - traefik-net
     deploy:
       <<: *common-deploy
       replicas: 1
@@ -113,6 +113,3 @@ networks:
   traefik-net:
     external: true
     name: traefik-${RUN_ENV}
-  no-internet-net:
-    external: true
-    name: no-internet-net
