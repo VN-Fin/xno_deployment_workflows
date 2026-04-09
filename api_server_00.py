@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 
+# The API
 app = FastAPI()
 
 
