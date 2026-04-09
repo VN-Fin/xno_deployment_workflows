@@ -3,31 +3,37 @@ version: '3.8'
 # Variables resolved by envsubst before `docker stack deploy`:
 #   ${root}                   — image tag from the build job (e.g. ghcr.io/org/repo/dev-app:abc1234)
 #   ${RUN_ENV}                — deployment environment: dev | staging | prod
-#   ${NODE_LABEL_CONSTRAINT}  — swarm placement constraint (e.g. "role == worker")
+#   ${NODE_ROLE}              — swarm placement constraint (e.g. "worker")
 
 x-common-deploy: &common-deploy
+  replicas: 1
+
+  rollback_config:
+    parallelism: 1
+    order: stop-first
+
   update_config:
     parallelism: 1
     order: start-first
     failure_action: rollback
-    delay: 10s
-  rollback_config:
-    parallelism: 1
-    order: stop-first
+    delay: 30s # Give the new container more time to healthcheck before killing the old one
+
   restart_policy:
-    condition: any
-    delay: 5s
-    max_attempts: 3
-    window: 120s
+    condition: on-failure # Only restart if it actually crashes
+    delay: 15s
+    max_attempts: 15 # Be aggressive here for post-reboot recovery
+    window: 600s
+
   placement:
     constraints:
-      - node.labels.${NODE_LABEL_CONSTRAINT}
+      - node.labels.role == ${NODE_ROLE}
       - node.labels.env == ${RUN_ENV}
 
+# for the services
 services:
   api01:
     image: ${root}
-    entrypoint: ["uvicorn", "api_server_01:app", "--host", "0.0.0.0", "--port", "8000"]
+    entrypoint: [ "uvicorn", "api_server_01:app", "--host", "0.0.0.0", "--port", "8000" ]
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
@@ -45,7 +51,7 @@ services:
 
   api02:
     image: ${root}
-    entrypoint: ["uvicorn", "api_server_02:app", "--host", "0.0.0.0", "--port", "8000"]
+    entrypoint: [ "uvicorn", "api_server_02:app", "--host", "0.0.0.0", "--port", "8000" ]
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
@@ -63,7 +69,7 @@ services:
 
   grpc01:
     image: ${root}
-    entrypoint: ["python", "grpc_server_01.py"]
+    entrypoint: [ "python", "grpc_server_01.py" ]
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
@@ -89,7 +95,7 @@ services:
 
   grpc02:
     image: ${root}
-    entrypoint: ["python", "grpc_server_02.py"]
+    entrypoint: [ "python", "grpc_server_02.py" ]
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:

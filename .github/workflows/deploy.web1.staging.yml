@@ -15,6 +15,6 @@ jobs:
       services: web1          # builds from web1/ → image var ${web1} in compose
       stack: web1             # swarm stack name: web1-staging
       compose_file: docker-compose.web1.yml
-      node_label: "role == worker"
+      node_role: "worker"
     secrets:
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

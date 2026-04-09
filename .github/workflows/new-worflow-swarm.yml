@@ -19,11 +19,11 @@ on:
         description: "Optional comma-separated list of Dockerfile paths (must align with services)"
         required: false
         type: string
-      node_label:
-        description: "Swarm placement constraint value (e.g., 'role == worker', 'env == prod')"
+      node_role:
+        description: "Swarm placement constraint value (e.g., 'worker', 'manager')"
         required: false
         type: string
-        default: "role == worker"
+        default: "worker"
       build_args:
         description: "Newline-separated KEY=VALUE pairs passed as --build-arg to docker build"
         required: false
@@ -119,7 +119,7 @@ jobs:
       - name: Deploy stack with resolved image tags
         env:
           RUN_ENV: ${{ inputs.environment }}
-          NODE_LABEL_CONSTRAINT: ${{ inputs.node_label }}
+          NODE_ROLE: ${{ inputs.node_role }}
           # All other vars (POSTGRES_HOST, KAFKA_SERVERS, etc.) are inherited from
           # the systemd runner service (e.g. actions.runner.*.service), scoped per environment
         run: |

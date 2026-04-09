@@ -3,32 +3,41 @@ version: '3.8'
 # Variables resolved by envsubst before `docker stack deploy`:
 #   ${web2}                   — image tag built from web2/Dockerfile
 #   ${RUN_ENV}                — deployment environment: dev | staging | prod
-#   ${NODE_LABEL_CONSTRAINT}  — swarm placement constraint (e.g. "role == worker")
+#   ${NODE_ROLE}              — swarm placement constraint (e.g. "worker")
 
 services:
   web2:
     image: ${web2}
     networks:
       - traefik-net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "15m"
+        max-file: "3"
+
     deploy:
-      replicas: ${WEB2_REPLICAS:-2}
+      replicas: ${WEB_REPLICAS:-2}
+      rollback_config:
+        parallelism: 1
+        order: stop-first
       update_config:
         parallelism: 1
         order: start-first
         failure_action: rollback
-        delay: 10s
-      rollback_config:
-        parallelism: 1
-        order: stop-first
+        delay: 30s # Give the new container more time to healthcheck before killing the old one
       restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+        condition: on-failure # Only restart if it actually crashes
+        delay: 15s
+        max_attempts: 15 # Be aggressive here for post-reboot recovery
+        window: 600s
+
       placement:
         constraints:
-          - node.labels.${NODE_LABEL_CONSTRAINT}
+          - node.labels.role == ${NODE_ROLE}
           - node.labels.env == ${RUN_ENV}
+
       labels:
         - "traefik.enable=true"
         - "traefik.env=${RUN_ENV}"

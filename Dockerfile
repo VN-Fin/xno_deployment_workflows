@@ -1,15 +1,21 @@
 # Use the official Python image
 FROM python:3.10-slim
 
-# Build args — baked into the image at build time
+# --- NEW: Install networking diagnostic tools ---
+# We combine these to keep the layer count down and clean up the cache to save space
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iputils-ping \
+    telnet \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build args
 ARG EXAMPLE_ARG_01=default_01
 ARG EXAMPLE_ARG_02=default_02
 
-# Persist build args as env vars so the app can read them at runtime
+# Persist build args
 ENV EXAMPLE_ARG_01=${EXAMPLE_ARG_01}
 ENV EXAMPLE_ARG_02=${EXAMPLE_ARG_02}
 
-# Set the working directory
 WORKDIR /app
 
 # Copy and install dependencies
@@ -19,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the app code
 COPY . .
 
-# Generate gRPC stubs from all proto files
+# Generate gRPC stubs
 RUN python -m grpc_tools.protoc \
     -I protos \
     --python_out=. \
@@ -27,8 +33,6 @@ RUN python -m grpc_tools.protoc \
     protos/hello01.proto \
     protos/hello02.proto
 
-# Expose ports: 8000 (HTTP), 50051 (gRPC)
 EXPOSE 8000 50051
 
-# Default: run the HTTP API (override via entrypoint in docker-compose)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
