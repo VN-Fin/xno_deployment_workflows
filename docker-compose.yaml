@@ -31,6 +31,25 @@ x-common-deploy: &common-deploy
 
 # for the services
 services:
+
+  # This is no internet containers (scale=2)
+  api00:
+    image: ${root}
+    entrypoint: [ "uvicorn", "api_server_00:app", "--host", "0.0.0.0", "--port", "8000" ]
+    environment:
+      RUN_ENV: ${RUN_ENV}
+    networks:
+      - no-internet-net
+    deploy:
+      <<: *common-deploy
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.env=${RUN_ENV}"
+        - "traefik.http.routers.api00_${RUN_ENV}.rule=PathPrefix(`/hello-api-00`)"
+        - "traefik.http.routers.api00_${RUN_ENV}.entrypoints=web"
+        - "traefik.http.services.api00_${RUN_ENV}.loadbalancer.server.port=8000"
+
   api01:
     image: ${root}
     entrypoint: [ "uvicorn", "api_server_01:app", "--host", "0.0.0.0", "--port", "8000" ]
@@ -113,3 +132,6 @@ networks:
   traefik-net:
     external: true
     name: traefik-${RUN_ENV}
+  no-internet-net:
+    external: true
+    name: no-internet-net
