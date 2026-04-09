@@ -26,7 +26,7 @@ x-common-deploy: &common-deploy
 
   placement:
     constraints:
-      - node.labels.role == ${NODE_ROLE}
+      - node.role == ${NODE_ROLE}
       - node.labels.env == ${RUN_ENV}
 
 # for the services
@@ -37,7 +37,6 @@ services:
     environment:
       RUN_ENV: ${RUN_ENV}
     networks:
-      - traefik-net
       - no-internet-net
     deploy:
       <<: *common-deploy
@@ -56,7 +55,6 @@ services:
       RUN_ENV: ${RUN_ENV}
     networks:
       - traefik-net
-      - no-internet-net
     deploy:
       <<: *common-deploy
       replicas: 3
@@ -74,7 +72,6 @@ services:
       RUN_ENV: ${RUN_ENV}
     networks:
       - traefik-net
-      - no-internet-net
     deploy:
       <<: *common-deploy
       replicas: 1
@@ -100,7 +97,6 @@ services:
       RUN_ENV: ${RUN_ENV}
     networks:
       - traefik-net
-      - no-internet-net
     deploy:
       <<: *common-deploy
       replicas: 2
@@ -114,8 +110,9 @@ services:
         - "traefik.http.services.grpc02_${RUN_ENV}.loadbalancer.server.scheme=h2c"
 
 networks:
-  no-internet-net:
-    external: true
   traefik-net:
     external: true
     name: traefik-${RUN_ENV}
+  no-internet-net:
+    external: true
+    name: no-internet-net

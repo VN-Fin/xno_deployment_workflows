@@ -30,6 +30,7 @@ services:
     ports:
       - "${TRAEFIK_PORT:-80}:80"
       - "${TRAEFIK_GRPC_PORT:-50051}:50051"
+      - "${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:

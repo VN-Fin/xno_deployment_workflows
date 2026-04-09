@@ -35,7 +35,7 @@ services:
 
       placement:
         constraints:
-          - node.labels.role == ${NODE_ROLE}
+          - node.role == ${NODE_ROLE}
           - node.labels.env == ${RUN_ENV}
 
       labels:

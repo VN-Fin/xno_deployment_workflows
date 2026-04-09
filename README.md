@@ -190,16 +190,25 @@ Each environment gets its own Traefik v3 stack so services are fully isolated.
 
 ```bash
 # Dev — HTTP :8081, gRPC :50051
-RUN_ENV=dev TRAEFIK_PORT=8081 TRAEFIK_GRPC_PORT=50051 \
-  docker stack deploy -c docker-compose.traefik.yml traefik-dev
+RUN_ENV=dev \
+TRAEFIK_PORT=8081 \
+TRAEFIK_GRPC_PORT=50051 \
+TRAEFIK_DASHBOARD_PORT=18081 \
+docker stack deploy -c docker-compose.traefik.yml traefik-dev
 
 # Staging — HTTP :8082, gRPC :50052
-RUN_ENV=staging TRAEFIK_PORT=8082 TRAEFIK_GRPC_PORT=50052 \
-  docker stack deploy -c docker-compose.traefik.yml traefik-staging
+RUN_ENV=staging \
+TRAEFIK_PORT=8082 \
+TRAEFIK_GRPC_PORT=50052 \
+TRAEFIK_DASHBOARD_PORT=18082 \
+docker stack deploy -c docker-compose.traefik.yml traefik-staging
 
 # Prod — HTTP :8083, gRPC :50053 (disable api.insecure in prod)
-RUN_ENV=prod TRAEFIK_PORT=8083 TRAEFIK_GRPC_PORT=50053 \
-  docker stack deploy -c docker-compose.traefik.yml traefik-prod
+RUN_ENV=prod \
+TRAEFIK_PORT=8083 \
+TRAEFIK_GRPC_PORT=50053 \
+TRAEFIK_DASHBOARD_PORT=18083 \
+docker stack deploy -c docker-compose.traefik.yml traefik-prod
 ```
 
 Verify:
