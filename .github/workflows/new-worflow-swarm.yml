@@ -39,7 +39,10 @@ on:
         required: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - local
+      - builder
     strategy:
       matrix:
         service: ${{ fromJson(inputs.services == 'root' && '["root"]' || format('["{0}"]', join(inputs.services, '","'))) }}
