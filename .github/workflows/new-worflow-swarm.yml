@@ -43,6 +43,7 @@ jobs:
       - self-hosted
       - local
       - builder
+    environment: local
     strategy:
       matrix:
         service: ${{ fromJson(inputs.services == 'root' && '["root"]' || format('["{0}"]', join(inputs.services, '","'))) }}
