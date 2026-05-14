@@ -109,7 +109,7 @@ jobs:
     runs-on:
       - self-hosted
       - ${{ inputs.environment }}
-    environment: ${{ inputs.environment }}
+    environment: local
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
